@@ -12,9 +12,6 @@
 
 namespace uhd { namespace rfnoc {
 
-// FIXME come up with a better place for this
-static const size_t CHDR_MAX_LEN_HDR = 16;
-
 static const std::string CLOCK_KEY_GRAPH("__graph__");
 
 static const std::string PROP_KEY_DECIM("decim");
@@ -26,6 +23,7 @@ static const std::string PROP_KEY_FREQ("freq");
 static const std::string PROP_KEY_TICK_RATE("tick_rate");
 static const std::string PROP_KEY_SPP("spp");
 static const std::string PROP_KEY_MTU("mtu");
+static const std::string PROP_KEY_ATOMIC_ITEM_SIZE("atomic_item_size");
 
 static const std::string NODE_ID_SEP("SEP");
 
@@ -44,9 +42,6 @@ static const std::string DEFAULT_BLOCK_NAME = "Block";
 //! This NOC-ID is used to look up the default block
 static const uint32_t DEFAULT_NOC_ID  = 0xFFFFFFFF;
 static const double DEFAULT_TICK_RATE = 1.0;
-// Whenever we need a default spp value use this, unless there are some
-// block/device-specific constraints. It will keep the frame size below 1500.
-static const int DEFAULT_SPP = 1996;
 
 /*! The NoC ID is the unique identifier of the block type. All blocks of the
  * same type have the same NoC ID.
@@ -72,6 +67,8 @@ static const device_type_t N300 = 0x1300;
 static const device_type_t N320 = 0x1320;
 //! X300 device family (X300, X310)
 static const device_type_t X300 = 0xA300;
+//! X400 device family
+static const device_type_t X400 = 0xA400;
 
 // block identifiers
 static const noc_id_t ADDSUB_BLOCK         = 0xADD00000;

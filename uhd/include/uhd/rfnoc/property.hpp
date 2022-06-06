@@ -36,14 +36,15 @@ public:
     property_base_t(const std::string& id, const res_source_info& source_info)
         : _id(id), _source_info(source_info)
     {
-        if(_id.find(':') != std::string::npos) {
-            throw uhd::value_error("Property ID `" + _id + "' contains invalid character!");
+        if (_id.find(':') != std::string::npos) {
+            throw uhd::value_error(
+                "Property ID `" + _id + "' contains invalid character!");
         }
     }
 
     virtual ~property_base_t()
     {
-        //nop
+        // nop
     }
 
     //! Gets the ID (name) of this property
@@ -146,7 +147,7 @@ private:
  * An encapsulation class for a block property.
  */
 template <typename data_t>
-class property_t : public property_base_t
+class UHD_API_HEADER property_t : public property_base_t
 {
 public:
     //! We want to be good C++ citizens
@@ -165,7 +166,7 @@ public:
     //
     // If true, this means the value was recently changed, but it wasn't marked
     // clean yet.
-    bool is_dirty() const
+    bool is_dirty() const override
     {
         return _data.is_dirty();
     }
@@ -174,12 +175,12 @@ public:
     //
     // If it's false, that means this property has a default value that should
     // NOT be used.
-    bool is_valid() const
+    bool is_valid() const override
     {
         return _valid;
     }
 
-    bool equal(property_base_t* rhs) const
+    bool equal(property_base_t* rhs) const override
     {
         if (!is_type_equal(rhs)) {
             return false;
@@ -193,7 +194,7 @@ public:
             new property_t<data_t>(get_id(), get(), new_src_info));
     }
 
-    void set_from_str(const std::string& new_val_str)
+    void set_from_str(const std::string& new_val_str) override
     {
         try {
             set(uhd::cast::from_str<data_t>(new_val_str));
@@ -228,7 +229,7 @@ public:
         }
     }
 
-    void force_dirty()
+    void force_dirty() override
     {
         if (write_access_granted()) {
             _data.force_dirty();
@@ -279,12 +280,12 @@ public:
     }
 
 private:
-    void mark_clean()
+    void mark_clean() override
     {
         _data.mark_clean();
     }
 
-    void forward(property_base_t* next_prop)
+    void forward(property_base_t* next_prop) override
     {
         if (not _valid) {
             throw uhd::resolve_error(
@@ -300,7 +301,7 @@ private:
         prop_ptr->set(get());
     }
 
-    bool is_type_equal(property_base_t* other_prop) const
+    bool is_type_equal(property_base_t* other_prop) const override
     {
         return dynamic_cast<property_t<data_t>*>(other_prop) != nullptr;
     }

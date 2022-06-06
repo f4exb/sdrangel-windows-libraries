@@ -229,6 +229,8 @@ protected:
      * either be reset after the constructor is finished, or the next time
      * properties are resolved.
      *
+     * For more information, see \ref props_define.
+     *
      * \param prop A reference to the property
      * \param clean_callback A callback that gets executed whenever this property
      *                       is dirty and gets marked clean
@@ -265,6 +267,8 @@ protected:
      *   (which is considered advanced usage), then the block needs to serialize
      *   access to this function itself.
      *
+     * For more information, see \ref props_resolvers.
+     *
      * \param inputs The properties that will cause this resolver to run
      * \param outputs The properties that this resolver will write to
      * \param resolver_fn The resolver function
@@ -290,6 +294,8 @@ protected:
      * Typically, this function should only ever be called from within the
      * constructor.
      *
+     * See also \ref props_unknown.
+     *
      * \param policy The policy that is applied (see also forwarding_policy_t).
      * \param prop_id The property ID that this forwarding policy is applied to.
      *                If \p prop_id is not given, it will apply to all properties,
@@ -314,6 +320,8 @@ protected:
      * The following conditions will generate exceptions at property
      * propagation time:
      *   - Any value in the destination vector represents a non-existent port
+     *
+     * See also \ref props_unknown.
      *
      * \param map The map describing how properties should be propagated
      */
@@ -570,6 +578,13 @@ private:
         _resolve_all_cb = resolver;
     }
 
+    /*! Restores the default property resolution behavior of the node.
+     */
+    void clear_resolve_all_callback()
+    {
+        _resolve_all_cb = _default_resolve_all_cb;
+    }
+
     /*! Forward the value of an edge property into this node
      *
      * Note that \p incoming_prop is a reference to the neighbouring node's
@@ -655,7 +670,11 @@ private:
 
     //! A callback that can be called to notify the graph manager that something
     // has changed, and that a property resolution needs to be performed.
-    resolve_callback_t _resolve_all_cb = [this]() {
+    resolve_callback_t _resolve_all_cb;
+
+    //! This is the default implementation of the property resolution
+    // method.
+    const resolve_callback_t _default_resolve_all_cb = [this]() {
         resolve_props();
         clean_props();
     };
