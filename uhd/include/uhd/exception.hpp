@@ -8,7 +8,6 @@
 #pragma once
 
 #include <uhd/config.hpp>
-#include <boost/current_function.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -48,9 +47,9 @@ struct UHD_API exception : std::runtime_error
 struct UHD_API assertion_error : exception
 {
     assertion_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual assertion_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    assertion_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! The base class for exceptions that are raised when a key or index is
@@ -59,9 +58,9 @@ struct UHD_API assertion_error : exception
 struct UHD_API lookup_error : exception
 {
     lookup_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual lookup_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    lookup_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when a sequence index is out of range.
@@ -69,9 +68,9 @@ struct UHD_API lookup_error : exception
 struct UHD_API index_error : lookup_error
 {
     index_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual index_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    index_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when a dictionary-like object is trying to be indexed by an
@@ -82,9 +81,9 @@ struct UHD_API index_error : lookup_error
 struct UHD_API key_error : lookup_error
 {
     key_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual key_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    key_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when an operation or function is executed with a value of
@@ -96,9 +95,9 @@ struct UHD_API key_error : lookup_error
 struct UHD_API type_error : exception
 {
     type_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual type_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    type_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when an operation or function receives an argument that has the
@@ -108,9 +107,9 @@ struct UHD_API type_error : exception
 struct UHD_API value_error : exception
 {
     value_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual value_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    value_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when a value is inappropriate because it can't be narrowed as
@@ -121,9 +120,9 @@ struct UHD_API value_error : exception
 struct UHD_API narrowing_error : value_error
 {
     narrowing_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual narrowing_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    narrowing_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when an error is detected that doesn't fall into any of the
@@ -132,9 +131,9 @@ struct UHD_API narrowing_error : value_error
 struct UHD_API runtime_error : exception
 {
     runtime_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual runtime_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    runtime_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when an error occurs during a USB transaction.
@@ -143,12 +142,12 @@ struct UHD_API usb_error : runtime_error
 {
     int _code;
     usb_error(int code, const std::string& what);
-    virtual unsigned code(void) const
+    unsigned code(void) const override
     {
         return _code;
     };
-    virtual usb_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    usb_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when a function is stubbed out but doesn't actually do anything
@@ -157,9 +156,9 @@ struct UHD_API usb_error : runtime_error
 struct UHD_API not_implemented_error : runtime_error
 {
     not_implemented_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual not_implemented_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    not_implemented_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when a resource is being accessed without having the appropriate
@@ -168,9 +167,9 @@ struct UHD_API not_implemented_error : runtime_error
 struct UHD_API access_error : runtime_error
 {
     access_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual access_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    access_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Base class for errors that occur outside of UHD.
@@ -178,9 +177,9 @@ struct UHD_API access_error : runtime_error
 struct UHD_API environment_error : exception
 {
     environment_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual environment_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    environment_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when an I/O operation fails for an I/O-related reason.
@@ -188,9 +187,9 @@ struct UHD_API environment_error : exception
 struct UHD_API io_error : environment_error
 {
     io_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual io_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    io_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when a function returns a system-related error.
@@ -198,9 +197,9 @@ struct UHD_API io_error : environment_error
 struct UHD_API os_error : environment_error
 {
     os_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual os_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    os_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! \deprecated
@@ -208,9 +207,9 @@ struct UHD_API os_error : environment_error
 struct UHD_API system_error : exception
 {
     system_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual system_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    system_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Raised when a parser encounters a syntax error.
@@ -220,9 +219,9 @@ struct UHD_API system_error : exception
 struct UHD_API syntax_error : exception
 {
     syntax_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual syntax_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    syntax_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Base class for RFNoC-related errors
@@ -230,9 +229,9 @@ struct UHD_API syntax_error : exception
 struct UHD_API rfnoc_error : exception
 {
     rfnoc_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual rfnoc_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    rfnoc_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Gets thrown when a transaction with an RFNoC block fails (IO error)
@@ -240,9 +239,9 @@ struct UHD_API rfnoc_error : exception
 struct UHD_API op_failed : rfnoc_error
 {
     op_failed(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual op_failed* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    op_failed* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Gets thrown when a transaction with an RFNoC block times out (e.g., no ACK
@@ -251,9 +250,9 @@ struct UHD_API op_failed : rfnoc_error
 struct UHD_API op_timeout : rfnoc_error
 {
     op_timeout(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual op_timeout* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    op_timeout* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Gets thrown when a transaction with an RFNoC yields a sequence error
@@ -261,9 +260,9 @@ struct UHD_API op_timeout : rfnoc_error
 struct UHD_API op_seqerr : rfnoc_error
 {
     op_seqerr(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual op_seqerr* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    op_seqerr* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Gets thrown when a transaction with an RFNoC yields a time error (late command)
@@ -271,9 +270,9 @@ struct UHD_API op_seqerr : rfnoc_error
 struct UHD_API op_timerr : rfnoc_error
 {
     op_timerr(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual op_timerr* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    op_timerr* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Gets thrown when a property resolution fails
@@ -281,9 +280,9 @@ struct UHD_API op_timerr : rfnoc_error
 struct UHD_API resolve_error : rfnoc_error
 {
     resolve_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual resolve_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    resolve_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*! Gets thrown when there is a routing-related failure in RFNoC
@@ -291,9 +290,9 @@ struct UHD_API resolve_error : rfnoc_error
 struct UHD_API routing_error : rfnoc_error
 {
     routing_error(const std::string& what);
-    virtual unsigned code(void) const;
-    virtual routing_error* dynamic_clone(void) const;
-    virtual void dynamic_throw(void) const;
+    unsigned code(void) const override;
+    routing_error* dynamic_clone(void) const override;
+    void dynamic_throw(void) const override;
 };
 
 /*!
@@ -302,10 +301,10 @@ struct UHD_API routing_error : rfnoc_error
  * \param what the std::exception message
  * \return the formatted exception message
  */
-#define UHD_THROW_SITE_INFO(what)                                                        \
-    std::string(std::string(what) + "\n" + "  in " + std::string(BOOST_CURRENT_FUNCTION) \
-                + "\n" + "  at " + std::string(__FILE__) + ":"                           \
-                + BOOST_STRINGIZE(__LINE__) + "\n")
+#define UHD_THROW_SITE_INFO(what)                                                     \
+    std::string(std::string(what) + "\n" + "  in " + std::string(UHD_FUNCTION) + "\n" \
+                + "  at " + std::string(__FILE__) + ":" + BOOST_STRINGIZE(__LINE__)   \
+                + "\n")
 
 /*!
  * Throws an invalid code path exception with throw-site information.

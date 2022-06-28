@@ -13,24 +13,32 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <typeindex>
 #include <vector>
 
 namespace uhd {
+
+/*!
+ * A non-templated class which exists solely so we can
+ * dynamic_cast between properties.
+ */
+class UHD_API property_iface {
+public:
+    virtual ~property_iface() = default;
+};
 
 /*!
  * A templated property interface for holding the state
  * associated with a property in a uhd::property_tree
  * and registering callbacks when that value changes.
  *
- * A property is defined to have two separate vales:
+ * A property is defined to have two separate values:
  * - Desired value: Value requested by the user
  * - Coerced value: Value that was actually possible
  *                  given HW and other requirements
  *
  * By default, the desired and coerced values are
  * identical as long as the property is not coerced.
- * A property can be coerced in two way:
+ * A property can be coerced in two ways:
  * 1. Using a coercer: A callback function that takes
  *    in a desired value and produces a coerced value.
  *    A property must have *exactly one* coercer.
@@ -66,14 +74,14 @@ namespace uhd {
  * - T must have an assignment operator
  */
 template <typename T>
-class property : uhd::noncopyable
+class UHD_API_HEADER property : uhd::noncopyable, public property_iface
 {
 public:
     typedef std::function<void(const T&)> subscriber_type;
     typedef std::function<T(void)> publisher_type;
     typedef std::function<T(const T&)> coercer_type;
 
-    virtual ~property<T>(void) = 0;
+    virtual ~property(void) = 0;
 
     /*!
      * Register a coercer into the property.
@@ -122,7 +130,7 @@ public:
     virtual property<T>& add_coerced_subscriber(const subscriber_type& subscriber) = 0;
 
     /*!
-     * Update calls all subscribers w/ the current value.
+     * Calls all subscribers with the current value.
      *
      * \return a reference to this property for chaining
      * \throws uhd::assertion_error
@@ -192,11 +200,8 @@ property<T>::~property(void)
 /*!
  * FS Path: A glorified string with path manipulations.
  * Inspired by boost filesystem path, but without the dependency.
- *
- * Notice: we do not declare UHD_API on the whole structure
- * because MSVC will do weird things with std::string and linking.
  */
-struct fs_path : std::string
+struct UHD_API_HEADER fs_path : std::string
 {
     UHD_API fs_path(void);
     UHD_API fs_path(const char*);
@@ -249,19 +254,14 @@ public:
 
 private:
     //! Internal pop function
-    virtual std::shared_ptr<void> _pop(const fs_path& path) = 0;
+    virtual std::shared_ptr<property_iface> _pop(const fs_path& path) = 0;
 
     //! Internal create property with wild-card type
     virtual void _create(const fs_path& path,
-        const std::shared_ptr<void>& prop,
-        std::type_index prop_type) = 0;
+        const std::shared_ptr<property_iface>& prop) = 0;
 
     //! Internal access property with wild-card type
-    virtual std::shared_ptr<void>& _access(const fs_path& path) const = 0;
-
-    //! Internal access property with wild-card type but with type verification
-    virtual std::shared_ptr<void>& _access_with_type_check(
-        const fs_path& path, std::type_index expected_prop_type) const = 0;
+    virtual std::shared_ptr<property_iface>& _access(const fs_path& path) const = 0;
 };
 
 } // namespace uhd

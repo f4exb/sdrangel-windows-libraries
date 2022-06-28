@@ -12,6 +12,10 @@
 
 namespace uhd { namespace rfnoc {
 
+/*! Null block: Bit bucket or -sink
+ *
+ * \ingroup rfnoc_blocks
+ */
 class UHD_API null_block_control : public noc_block_base
 {
 public:
@@ -57,6 +61,14 @@ public:
      * the data output.
      */
     virtual void set_throttle_cycles(const uint32_t cycs) = 0;
+
+    /*! Get item width (ITEM_W)
+     */
+    virtual uint32_t get_item_width() = 0;
+
+    /*! Get number of items per clock (NIPC)
+     */
+    virtual uint32_t get_nipc() = 0;
 
     /*! Get lines per packet (including the header!)
      */

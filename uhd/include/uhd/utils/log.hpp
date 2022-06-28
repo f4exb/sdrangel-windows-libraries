@@ -8,13 +8,14 @@
 #pragma once
 
 #include <uhd/config.hpp>
-#include <boost/current_function.hpp>
-#include <boost/thread/thread.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/optional.hpp>
 #include <iomanip>
 #include <iostream>
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <thread>
 
 /*! \file log.hpp
  *
@@ -47,18 +48,30 @@
  * Log levels can be specified using string or numeric values of
  * uhd::log::severity_level.
  *
- * The default log level is "info", but can be overridden:
- *  - at compile time by setting the pre-processor define `-DUHD_LOG_MIN_LEVEL`.
- *  - at runtime by setting the environment variable `UHD_LOG_LEVEL`.
- *  - for console logging by setting `(-D)UHD_LOG_CONSOLE_LEVEL` at
- *    run-/compiletime
- *  - for file logging by setting `(-D)UHD_LOG_FILE_LEVEL` at run-/compiletime
+ * The minimum log level is defined by `-DUHD_LOG_MIN_LEVEL` at compile time,
+ * and this value can be increased at runtime by specifying the `UHD_LOG_LEVEL`
+ * environment variable. This minimum logging level applies to any form of
+ * runtime logging. Thus for example if this minimum is set to 3 (`info`), then
+ * during runtime no logging at levels below 3 can be provided.
  *
- * UHD_LOG_LEVEL can be the name of a verbosity enum or integer value:
+ * The following set the minimum logging level to 3 (`info`):
  *   - Example pre-processor define: `-DUHD_LOG_MIN_LEVEL=3`
  *   - Example pre-processor define: `-DUHD_LOG_MIN_LEVEL=info`
  *   - Example environment variable: `export UHD_LOG_LEVEL=3`
  *   - Example environment variable: `export UHD_LOG_LEVEL=info`
+ *
+ * The actual log level for console and file logging can be configured by
+ * setting `UHD_LOG_CONSOLE_LEVEL` or `UHD_LOG_FILE_LEVEL`, respectively. The
+ * default values for these variables can be defined using the cmake flags
+ * `-DUHD_LOG_CONSOLE_LEVEL` and `-DUHD_LOG_FILE_LEVEL`, respectively.
+ *
+ * These variables can be the name of a verbosity enum or integer value:
+ *   - Example pre-processor define: `-DUHD_LOG_CONSOLE_LEVEL=3`
+ *   - Example pre-processor define: `-DUHD_LOG_CONSOLE_LEVEL=info`
+ *   - Example environment variable: `export UHD_LOG_CONSOLE_LEVEL=3`
+ *   - Example environment variable: `export UHD_LOG_CONSOLE_LEVEL=info`
+ *
+ * The `UHD_LOG_FILE_LEVEL` variable can be used in the same way.
  *
  * \subsection loghpp_formatting Log formatting
  *
@@ -110,6 +123,12 @@ enum severity_level {
     off     = 6, /**< logging is turned off */
 };
 
+/*! Parses a `severity_level` from a string. If a value could not be parsed,
+ * returns none.
+ */
+boost::optional<uhd::log::severity_level> UHD_API parse_log_level_from_string(
+    const std::string& log_level_str);
+
 /*! Logging info structure
  *
  * Information needed to create a log entry is fully contained in the
@@ -123,7 +142,7 @@ struct UHD_API logging_info
         const std::string& file_,
         const unsigned int& line_,
         const std::string& component_,
-        const boost::thread::id& thread_id_)
+        const std::thread::id& thread_id_)
         : time(time_)
         , verbosity(verbosity_)
         , file(file_)
@@ -138,7 +157,7 @@ struct UHD_API logging_info
     std::string file;
     unsigned int line;
     std::string component;
-    boost::thread::id thread_id;
+    std::thread::id thread_id;
     std::string message;
 };
 
@@ -175,7 +194,7 @@ UHD_API void set_logger_level(const std::string& logger, uhd::log::severity_leve
 //! \cond
 //! Internal logging macro to be used in other macros
 #define _UHD_LOG_INTERNAL(component, level) \
-    uhd::_log::log(level, __FILE__, __LINE__, component, boost::this_thread::get_id())
+    uhd::_log::log(level, __FILE__, __LINE__, component, std::this_thread::get_id())
 //! \endcond
 
 // macro-style logging (compile-time determined)
@@ -251,7 +270,7 @@ UHD_API void set_logger_level(const std::string& logger, uhd::log::severity_leve
 //! Helpful debug tool to print site info
 #    define UHD_HERE()            \
         UHD_LOGGER_DEBUG("DEBUG") \
-            << __FILE__ << ":" << __LINE__ << " (" << __PRETTY_FUNCTION__ << ")";
+            << __FILE__ << ":" << __LINE__ << " (" << UHD_PRETTY_FUNCTION << ")";
 #else
 //! Helpful debug tool to print site info
 #    define UHD_HERE() UHD_LOGGER_DEBUG("DEBUG") << __FILE__ << ":" << __LINE__;
@@ -280,7 +299,7 @@ public:
         const std::string& file,
         const unsigned int line,
         const std::string& component,
-        const boost::thread::id thread_id);
+        const std::thread::id thread_id);
 
     ~log(void);
 

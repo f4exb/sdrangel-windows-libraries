@@ -13,14 +13,14 @@
  * The format is oldest API compatible release - ABI compat number.
  * The compatibility number allows pre-release ABI to be versioned.
  */
-#define UHD_VERSION_ABI_STRING "4.0.0"
+#define UHD_VERSION_ABI_STRING "4.2.0"
 
 /*!
  * A macro to check UHD version at compile-time.
  * The value of this macro is MAJOR * 1000000 + API * 10000 + ABI * 100 + PATCH
  * (e.g., for UHD 3.10.0.1 this is 3100001).
  */
-#define UHD_VERSION 4000000
+#define UHD_VERSION 4020000
 
 #ifdef __cplusplus
 #include <uhd/config.hpp>
