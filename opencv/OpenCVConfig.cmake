@@ -123,6 +123,8 @@ elseif(MSVC)
         set(OpenCV_RUNTIME vc14) # selecting previous compatible runtime version
       endif()
     endif()
+  elseif(MSVC_VERSION MATCHES "^193[0-9]$")
+    set(OpenCV_RUNTIME vc15)
   endif()
 elseif(MINGW)
   set(OpenCV_RUNTIME mingw)
