@@ -13,29 +13,32 @@
  * The format is oldest API compatible release - ABI compat number.
  * The compatibility number allows pre-release ABI to be versioned.
  */
-#define UHD_VERSION_ABI_STRING "4.2.0"
+#define UHD_VERSION_ABI_STRING "4.5.0"
 
+// clang-format off
 /*!
  * A macro to check UHD version at compile-time.
  * The value of this macro is MAJOR * 1000000 + API * 10000 + ABI * 100 + PATCH
  * (e.g., for UHD 3.10.0.1 this is 3100001).
  */
-#define UHD_VERSION 4020000
+#define UHD_VERSION 4050000
 
 #ifdef __cplusplus
 #include <uhd/config.hpp>
 #include <string>
 
-namespace uhd{
+// clang-format on
 
-    //! Get the version string (dotted version number + build info)
-    UHD_API std::string get_version_string(void);
+namespace uhd {
 
-    //! Get the ABI compatibility string for this build of the library
-    UHD_API std::string get_abi_string(void);
+//! Get the version string (dotted version number + build info)
+UHD_API std::string get_version_string(void);
 
-    //! Get the component string
-    UHD_API std::string get_component(void);
+//! Get the ABI compatibility string for this build of the library
+UHD_API std::string get_abi_string(void);
 
-} //namespace uhd
+//! Get the component string
+UHD_API std::string get_component(void);
+
+} // namespace uhd
 #endif

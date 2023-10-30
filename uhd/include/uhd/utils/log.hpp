@@ -233,6 +233,14 @@ UHD_API void set_logger_level(const std::string& logger, uhd::log::severity_leve
 #    define UHD_LOG_ERROR(component, message)
 #endif
 
+#define UHD_LOG_THROW(exception_type, component, message) \
+    {                                                     \
+        std::ostringstream __ss;                          \
+        __ss << message;                                  \
+        UHD_LOG_ERROR(component, __ss.str());             \
+        throw exception_type(__ss.str());                 \
+    }
+
 #if UHD_LOG_MIN_LEVEL < 6
 #    define UHD_LOG_FATAL(component, message) \
         _UHD_LOG_INTERNAL(component, uhd::log::fatal) << message;
@@ -240,12 +248,12 @@ UHD_API void set_logger_level(const std::string& logger, uhd::log::severity_leve
 #    define UHD_LOG_FATAL(component, message)
 #endif
 
-#define RFNOC_LOG_TRACE(message) UHD_LOG_TRACE(this->get_unique_id(), message)
-#define RFNOC_LOG_DEBUG(message) UHD_LOG_DEBUG(this->get_unique_id(), message)
-#define RFNOC_LOG_INFO(message) UHD_LOG_INFO(this->get_unique_id(), message)
+#define RFNOC_LOG_TRACE(message)   UHD_LOG_TRACE(this->get_unique_id(), message)
+#define RFNOC_LOG_DEBUG(message)   UHD_LOG_DEBUG(this->get_unique_id(), message)
+#define RFNOC_LOG_INFO(message)    UHD_LOG_INFO(this->get_unique_id(), message)
 #define RFNOC_LOG_WARNING(message) UHD_LOG_WARNING(this->get_unique_id(), message)
-#define RFNOC_LOG_ERROR(message) UHD_LOG_ERROR(this->get_unique_id(), message)
-#define RFNOC_LOG_FATAL(message) UHD_LOG_FATAL(this->get_unique_id(), message)
+#define RFNOC_LOG_ERROR(message)   UHD_LOG_ERROR(this->get_unique_id(), message)
+#define RFNOC_LOG_FATAL(message)   UHD_LOG_FATAL(this->get_unique_id(), message)
 
 #ifndef UHD_LOG_FASTPATH_DISABLE
 //! Extra-fast logging macro for when speed matters.
@@ -258,12 +266,12 @@ UHD_API void set_logger_level(const std::string& logger, uhd::log::severity_leve
 #endif
 
 // iostream-style logging
-#define UHD_LOGGER_TRACE(component) _UHD_LOG_INTERNAL(component, uhd::log::trace)
-#define UHD_LOGGER_DEBUG(component) _UHD_LOG_INTERNAL(component, uhd::log::debug)
-#define UHD_LOGGER_INFO(component) _UHD_LOG_INTERNAL(component, uhd::log::info)
+#define UHD_LOGGER_TRACE(component)   _UHD_LOG_INTERNAL(component, uhd::log::trace)
+#define UHD_LOGGER_DEBUG(component)   _UHD_LOG_INTERNAL(component, uhd::log::debug)
+#define UHD_LOGGER_INFO(component)    _UHD_LOG_INTERNAL(component, uhd::log::info)
 #define UHD_LOGGER_WARNING(component) _UHD_LOG_INTERNAL(component, uhd::log::warning)
-#define UHD_LOGGER_ERROR(component) _UHD_LOG_INTERNAL(component, uhd::log::error)
-#define UHD_LOGGER_FATAL(component) _UHD_LOG_INTERNAL(component, uhd::log::fatal)
+#define UHD_LOGGER_ERROR(component)   _UHD_LOG_INTERNAL(component, uhd::log::error)
+#define UHD_LOGGER_FATAL(component)   _UHD_LOG_INTERNAL(component, uhd::log::fatal)
 
 
 #if defined(__GNUG__)
