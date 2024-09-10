@@ -85,10 +85,10 @@ public:
     @param mask Image mask
         */
     CV_WRAP virtual void apply(int index, Point corner, InputOutputArray image, InputArray mask) = 0;
-    CV_WRAP virtual void getMatGains(CV_OUT std::vector<Mat>& ) {CV_Error(Error::StsInternal, "");};
-    CV_WRAP virtual void setMatGains(std::vector<Mat>& ) { CV_Error(Error::StsInternal, ""); };
-    CV_WRAP void setUpdateGain(bool b) { updateGain = b; };
-    CV_WRAP bool getUpdateGain() { return updateGain; };
+    CV_WRAP virtual void getMatGains(CV_OUT std::vector<Mat>& ) {CV_Error(Error::StsInternal, "");}
+    CV_WRAP virtual void setMatGains(std::vector<Mat>& ) { CV_Error(Error::StsInternal, ""); }
+    CV_WRAP void setUpdateGain(bool b) { updateGain = b; }
+    CV_WRAP bool getUpdateGain() { return updateGain; }
 protected :
     bool updateGain;
 };
@@ -101,8 +101,8 @@ public:
     void feed(const std::vector<Point> &/*corners*/, const std::vector<UMat> &/*images*/,
               const std::vector<std::pair<UMat,uchar> > &/*masks*/) CV_OVERRIDE { }
     CV_WRAP void apply(int /*index*/, Point /*corner*/, InputOutputArray /*image*/, InputArray /*mask*/) CV_OVERRIDE { }
-    CV_WRAP void getMatGains(CV_OUT std::vector<Mat>& umv) CV_OVERRIDE { umv.clear(); return; };
-    CV_WRAP void setMatGains(std::vector<Mat>& umv) CV_OVERRIDE { umv.clear(); return; };
+    CV_WRAP void getMatGains(CV_OUT std::vector<Mat>& umv) CV_OVERRIDE { umv.clear(); return; }
+    CV_WRAP void setMatGains(std::vector<Mat>& umv) CV_OVERRIDE { umv.clear(); return; }
 };
 
 /** @brief Exposure compensator which tries to remove exposure related artifacts by adjusting image
@@ -115,7 +115,7 @@ public:
     CV_WRAP GainCompensator()
             : GainCompensator(1) {}
     CV_WRAP GainCompensator(int nr_feeds)
-            : nr_feeds_(nr_feeds) {}
+            : nr_feeds_(nr_feeds), similarity_threshold_(1) {}
     void feed(const std::vector<Point> &corners, const std::vector<UMat> &images,
               const std::vector<std::pair<UMat,uchar> > &masks) CV_OVERRIDE;
     void singleFeed(const std::vector<Point> &corners, const std::vector<UMat> &images,
@@ -125,11 +125,18 @@ public:
     CV_WRAP void setMatGains(std::vector<Mat>& umv) CV_OVERRIDE ;
     CV_WRAP void setNrFeeds(int nr_feeds) { nr_feeds_ = nr_feeds; }
     CV_WRAP int getNrFeeds() { return nr_feeds_; }
+    CV_WRAP void setSimilarityThreshold(double similarity_threshold) { similarity_threshold_ = similarity_threshold; }
+    CV_WRAP double getSimilarityThreshold() const { return similarity_threshold_; }
+    void prepareSimilarityMask(const std::vector<Point> &corners, const std::vector<UMat> &images);
     std::vector<double> gains() const;
 
 private:
+    UMat buildSimilarityMask(InputArray src_array1, InputArray src_array2);
+
     Mat_<double> gains_;
     int nr_feeds_;
+    double similarity_threshold_;
+    std::vector<UMat> similarities_;
 };
 
 /** @brief Exposure compensator which tries to remove exposure related artifacts by adjusting image
@@ -138,7 +145,8 @@ intensities on each channel independently.
 class CV_EXPORTS_W ChannelsCompensator : public ExposureCompensator
 {
 public:
-    CV_WRAP ChannelsCompensator(int nr_feeds=1) : nr_feeds_(nr_feeds) {}
+    CV_WRAP ChannelsCompensator(int nr_feeds=1)
+        : nr_feeds_(nr_feeds), similarity_threshold_(1) {}
     void feed(const std::vector<Point> &corners, const std::vector<UMat> &images,
               const std::vector<std::pair<UMat,uchar> > &masks) CV_OVERRIDE;
     CV_WRAP void apply(int index, Point corner, InputOutputArray image, InputArray mask) CV_OVERRIDE;
@@ -146,11 +154,14 @@ public:
     CV_WRAP void setMatGains(std::vector<Mat>& umv) CV_OVERRIDE;
     CV_WRAP void setNrFeeds(int nr_feeds) { nr_feeds_ = nr_feeds; }
     CV_WRAP int getNrFeeds() { return nr_feeds_; }
+    CV_WRAP void setSimilarityThreshold(double similarity_threshold) { similarity_threshold_ = similarity_threshold; }
+    CV_WRAP double getSimilarityThreshold() const { return similarity_threshold_; }
     std::vector<Scalar> gains() const { return gains_; }
 
 private:
     std::vector<Scalar> gains_;
     int nr_feeds_;
+    double similarity_threshold_;
 };
 
 /** @brief Exposure compensator which tries to remove exposure related artifacts by adjusting image blocks.
@@ -159,12 +170,15 @@ class CV_EXPORTS_W BlocksCompensator : public ExposureCompensator
 {
 public:
     BlocksCompensator(int bl_width=32, int bl_height=32, int nr_feeds=1)
-            : bl_width_(bl_width), bl_height_(bl_height), nr_feeds_(nr_feeds), nr_gain_filtering_iterations_(2) {}
+            : bl_width_(bl_width), bl_height_(bl_height), nr_feeds_(nr_feeds), nr_gain_filtering_iterations_(2),
+              similarity_threshold_(1) {}
     CV_WRAP void apply(int index, Point corner, InputOutputArray image, InputArray mask) CV_OVERRIDE;
     CV_WRAP void getMatGains(CV_OUT std::vector<Mat>& umv) CV_OVERRIDE;
     CV_WRAP void setMatGains(std::vector<Mat>& umv) CV_OVERRIDE;
     CV_WRAP void setNrFeeds(int nr_feeds) { nr_feeds_ = nr_feeds; }
     CV_WRAP int getNrFeeds() { return nr_feeds_; }
+    CV_WRAP void setSimilarityThreshold(double similarity_threshold) { similarity_threshold_ = similarity_threshold; }
+    CV_WRAP double getSimilarityThreshold() const { return similarity_threshold_; }
     CV_WRAP void setBlockSize(int width, int height) { bl_width_ = width; bl_height_ = height; }
     CV_WRAP void setBlockSize(Size size) { setBlockSize(size.width, size.height); }
     CV_WRAP Size getBlockSize() const { return Size(bl_width_, bl_height_); }
@@ -184,6 +198,7 @@ private:
     std::vector<UMat> gain_maps_;
     int nr_feeds_;
     int nr_gain_filtering_iterations_;
+    double similarity_threshold_;
 };
 
 /** @brief Exposure compensator which tries to remove exposure related artifacts by adjusting image block

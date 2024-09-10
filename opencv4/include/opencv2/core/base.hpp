@@ -271,11 +271,11 @@ enum BorderTypes {
     BORDER_REFLECT     = 2, //!< `fedcba|abcdefgh|hgfedcb`
     BORDER_WRAP        = 3, //!< `cdefgh|abcdefgh|abcdefg`
     BORDER_REFLECT_101 = 4, //!< `gfedcb|abcdefgh|gfedcba`
-    BORDER_TRANSPARENT = 5, //!< `uvwxyz|abcdefgh|ijklmno`
+    BORDER_TRANSPARENT = 5, //!< `uvwxyz|abcdefgh|ijklmno` - Treats outliers as transparent.
 
     BORDER_REFLECT101  = BORDER_REFLECT_101, //!< same as BORDER_REFLECT_101
     BORDER_DEFAULT     = BORDER_REFLECT_101, //!< same as BORDER_REFLECT_101
-    BORDER_ISOLATED    = 16 //!< do not look outside of ROI
+    BORDER_ISOLATED    = 16 //!< Interpolation restricted within the ROI boundaries.
 };
 
 //! @} core_array
@@ -537,6 +537,16 @@ _AccTp normInf(const _Tp* a, const _Tp* b, int n)
  @param val A function argument.
  */
 CV_EXPORTS_W float cubeRoot(float val);
+
+/** @overload
+
+cubeRoot with argument of `double` type calls `std::cbrt(double)`
+*/
+static inline
+double cubeRoot(double val)
+{
+    return std::cbrt(val);
+}
 
 /** @brief Calculates the angle of a 2D vector in degrees.
 

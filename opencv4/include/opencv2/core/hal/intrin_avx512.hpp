@@ -506,12 +506,12 @@ inline v_float64x8 v_reinterpret_as_f64(const v_float32x16& a)
 { return v_float64x8(_mm512_castps_pd(a.val)); }
 
 // FP16
-inline v_float32x16 v512_load_expand(const float16_t* ptr)
+inline v_float32x16 v512_load_expand(const hfloat* ptr)
 {
     return v_float32x16(_mm512_cvtph_ps(_mm256_loadu_si256((const __m256i*)ptr)));
 }
 
-inline void v_pack_store(float16_t* ptr, const v_float32x16& a)
+inline void v_pack_store(hfloat* ptr, const v_float32x16& a)
 {
     __m256i ah = _mm512_cvtps_ph(a.val, 0);
     _mm256_storeu_si256((__m256i*)ptr, ah);
@@ -1385,11 +1385,21 @@ inline v_uint64x8  v_popcount(const v_uint64x8&  a) { return v_popcount(v_reinte
 ////////// Other math /////////
 
 /** Some frequent operations **/
+#if CV_FMA3
 #define OPENCV_HAL_IMPL_AVX512_MULADD(_Tpvec, suffix)                         \
     inline _Tpvec v_fma(const _Tpvec& a, const _Tpvec& b, const _Tpvec& c)    \
     { return _Tpvec(_mm512_fmadd_##suffix(a.val, b.val, c.val)); }            \
     inline _Tpvec v_muladd(const _Tpvec& a, const _Tpvec& b, const _Tpvec& c) \
-    { return _Tpvec(_mm512_fmadd_##suffix(a.val, b.val, c.val)); }            \
+    { return _Tpvec(_mm512_fmadd_##suffix(a.val, b.val, c.val)); }
+#else
+#define OPENCV_HAL_IMPL_AVX512_MULADD(_Tpvec, suffix)                                 \
+    inline _Tpvec v_fma(const _Tpvec& a, const _Tpvec& b, const _Tpvec& c)            \
+    { return _Tpvec(_mm512_add_##suffix(_mm512_mul_##suffix(a.val, b.val), c.val)); } \
+    inline _Tpvec v_muladd(const _Tpvec& a, const _Tpvec& b, const _Tpvec& c)         \
+    { return _Tpvec(_mm512_add_##suffix(_mm512_mul_##suffix(a.val, b.val), c.val)); }
+#endif
+
+#define OPENCV_HAL_IMPL_AVX512_MISC(_Tpvec, suffix)                           \
     inline _Tpvec v_sqrt(const _Tpvec& x)                                     \
     { return _Tpvec(_mm512_sqrt_##suffix(x.val)); }                           \
     inline _Tpvec v_sqr_magnitude(const _Tpvec& a, const _Tpvec& b)           \
@@ -1399,6 +1409,8 @@ inline v_uint64x8  v_popcount(const v_uint64x8&  a) { return v_popcount(v_reinte
 
 OPENCV_HAL_IMPL_AVX512_MULADD(v_float32x16, ps)
 OPENCV_HAL_IMPL_AVX512_MULADD(v_float64x8,  pd)
+OPENCV_HAL_IMPL_AVX512_MISC(v_float32x16, ps)
+OPENCV_HAL_IMPL_AVX512_MISC(v_float64x8,  pd)
 
 inline v_int32x16 v_fma(const v_int32x16& a, const v_int32x16& b, const v_int32x16& c)
 { return a * b + c; }

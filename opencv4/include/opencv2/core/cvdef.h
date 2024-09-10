@@ -45,6 +45,8 @@
 #ifndef OPENCV_CORE_CVDEF_H
 #define OPENCV_CORE_CVDEF_H
 
+#include "opencv2/core/version.hpp"
+
 //! @addtogroup core_utils
 //! @{
 
@@ -90,7 +92,7 @@ namespace cv { namespace debug_build_guard { } using namespace debug_build_guard
 // keep current value (through OpenCV port file)
 #elif defined __GNUC__ || (defined (__cpluscplus) && (__cpluscplus >= 201103))
 #define CV_Func __func__
-#elif defined __clang__ && (__clang_minor__ * 100 + __clang_major >= 305)
+#elif defined __clang__ && (__clang_minor__ * 100 + __clang_major__ >= 305)
 #define CV_Func __func__
 #elif defined(__STDC_VERSION__) && (__STDC_VERSION >= 199901)
 #define CV_Func __func__
@@ -199,6 +201,14 @@ namespace cv {
 #  define CV_ICC   __INTEL_COMPILER
 #endif
 
+#if defined _WIN32
+#  define CV_CDECL __cdecl
+#  define CV_STDCALL __stdcall
+#else
+#  define CV_CDECL
+#  define CV_STDCALL
+#endif
+
 #ifndef CV_INLINE
 #  if defined __cplusplus
 #    define CV_INLINE static inline
@@ -266,13 +276,21 @@ namespace cv {
 #define CV_CPU_AVX_5124FMAPS    27
 
 #define CV_CPU_NEON             100
+#define CV_CPU_NEON_DOTPROD     101
+#define CV_CPU_NEON_FP16        102
+#define CV_CPU_NEON_BF16        103
 
 #define CV_CPU_MSA              150
+
+#define CV_CPU_RISCVV           170
 
 #define CV_CPU_VSX              200
 #define CV_CPU_VSX3             201
 
 #define CV_CPU_RVV              210
+
+#define CV_CPU_LSX              230
+#define CV_CPU_LASX             231
 
 // CPU features groups
 #define CV_CPU_AVX512_SKX       256
@@ -320,13 +338,21 @@ enum CpuFeatures {
     CPU_AVX_5124FMAPS   = 27,
 
     CPU_NEON            = 100,
+    CPU_NEON_DOTPROD    = 101,
+    CPU_NEON_FP16       = 102,
+    CPU_NEON_BF16       = 103,
 
     CPU_MSA             = 150,
+
+    CPU_RISCVV          = 170,
 
     CPU_VSX             = 200,
     CPU_VSX3            = 201,
 
     CPU_RVV             = 210,
+
+    CPU_LSX             = 230,
+    CPU_LASX            = 231,
 
     CPU_AVX512_SKX      = 256, //!< Skylake-X with AVX-512F/CD/BW/DQ/VL
     CPU_AVX512_COMMON   = 257, //!< Common instructions AVX-512F/CD for all CPUs that support AVX-512
@@ -388,7 +414,9 @@ typedef union Cv64suf
 }
 Cv64suf;
 
+#ifndef OPENCV_ABI_COMPATIBILITY
 #define OPENCV_ABI_COMPATIBILITY 400
+#endif
 
 #ifdef __OPENCV_BUILD
 #  define DISABLE_OPENCV_3_COMPATIBILITY
@@ -445,6 +473,7 @@ Cv64suf;
 #define CV_EXPORTS_W_SIMPLE CV_EXPORTS
 #define CV_EXPORTS_AS(synonym) CV_EXPORTS
 #define CV_EXPORTS_W_MAP CV_EXPORTS
+#define CV_EXPORTS_W_PARAMS CV_EXPORTS
 #define CV_IN_OUT
 #define CV_OUT
 #define CV_PROP
@@ -454,11 +483,14 @@ Cv64suf;
 #define CV_WRAP_MAPPABLE(mappable)
 #define CV_WRAP_PHANTOM(phantom_header)
 #define CV_WRAP_DEFAULT(val)
+/* Indicates that the function parameter has filesystem path semantic */
+#define CV_WRAP_FILE_PATH
 
 /****************************************************************************************\
 *                                  Matrix type (Mat)                                     *
 \****************************************************************************************/
 
+#define CV_MAX_DIM              32
 #define CV_MAT_CN_MASK          ((CV_CN_MAX - 1) << CV_CN_SHIFT)
 #define CV_MAT_CN(flags)        ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
 #define CV_MAT_TYPE_MASK        (CV_DEPTH_MAX*CV_CN_MAX - 1)
@@ -484,6 +516,13 @@ Cv64suf;
 #ifndef MAX
 #  define MAX(a,b)  ((a) < (b) ? (b) : (a))
 #endif
+
+/** min & max without jumps */
+#define CV_IMIN(a, b)  ((a) ^ (((a)^(b)) & (((a) < (b)) - 1)))
+#define CV_IMAX(a, b)  ((a) ^ (((a)^(b)) & (((a) > (b)) - 1)))
+#define CV_SWAP(a,b,t) ((t) = (a), (a) = (b), (b) = (t))
+#define CV_CMP(a,b)    (((a) > (b)) - ((a) < (b)))
+#define CV_SIGN(a)     CV_CMP((a),0)
 
 ///////////////////////////////////////// Enum operators ///////////////////////////////////////
 
@@ -676,7 +715,7 @@ __CV_ENUM_FLAGS_BITWISE_XOR_EQ   (EnumType, EnumType)                           
 #  define CV_XADD(addr, delta) (int)_InterlockedExchangeAdd((long volatile*)addr, delta)
 #else
   #ifdef OPENCV_FORCE_UNSAFE_XADD
-    CV_INLINE CV_XADD(int* addr, int delta) { int tmp = *addr; *addr += delta; return tmp; }
+    CV_INLINE int CV_XADD(int* addr, int delta) { int tmp = *addr; *addr += delta; return tmp; }
   #else
     #error "OpenCV: can't define safe CV_XADD macro for current platform (unsupported). Define CV_XADD macro through custom port header (see OPENCV_INCLUDE_PORT_FILE)"
   #endif
@@ -697,86 +736,76 @@ __CV_ENUM_FLAGS_BITWISE_XOR_EQ   (EnumType, EnumType)                           
 #  endif
 #endif
 
-
 /****************************************************************************************\
-*                                  CV_NODISCARD attribute                                *
-* encourages the compiler to issue a warning if the return value is discarded (C++17)    *
+*                       CV_NODISCARD_STD attribute (C++17)                               *
+* encourages the compiler to issue a warning if the return value is discarded            *
 \****************************************************************************************/
-#ifndef CV_NODISCARD
-#  if defined(__GNUC__)
-#    define CV_NODISCARD __attribute__((__warn_unused_result__)) // at least available with GCC 3.4
-#  elif defined(__clang__) && defined(__has_attribute)
-#    if __has_attribute(__warn_unused_result__)
-#      define CV_NODISCARD __attribute__((__warn_unused_result__))
-#    endif
+#ifndef CV_NODISCARD_STD
+#  ifndef __has_cpp_attribute
+//   workaround preprocessor non-compliance https://reviews.llvm.org/D57851
+#    define __has_cpp_attribute(__x) 0
+#  endif
+#  if __has_cpp_attribute(nodiscard)
+#    define CV_NODISCARD_STD [[nodiscard]]
+#  elif __cplusplus >= 201703L
+//   available when compiler is C++17 compliant
+#    define CV_NODISCARD_STD [[nodiscard]]
+#  elif defined(__INTEL_COMPILER)
+     // see above, available when C++17 is enabled
+#  elif defined(_MSC_VER) && _MSC_VER >= 1911 && _MSVC_LANG >= 201703L
+//   available with VS2017 v15.3+ with /std:c++17 or higher; works on functions and classes
+#    define CV_NODISCARD_STD [[nodiscard]]
+#  elif defined(__GNUC__) && (((__GNUC__ * 100) + __GNUC_MINOR__) >= 700) && (__cplusplus >= 201103L)
+//   available with GCC 7.0+; works on functions, works or silently fails on classes
+#    define CV_NODISCARD_STD [[nodiscard]]
+#  elif defined(__GNUC__) && (((__GNUC__ * 100) + __GNUC_MINOR__) >= 408) && (__cplusplus >= 201103L)
+//   available with GCC 4.8+ but it usually does nothing and can fail noisily -- therefore not used
+//   define CV_NODISCARD_STD [[gnu::warn_unused_result]]
 #  endif
 #endif
-#ifndef CV_NODISCARD
-#  define CV_NODISCARD /* nothing by default */
+#ifndef CV_NODISCARD_STD
+#  define CV_NODISCARD_STD /* nothing by default */
 #endif
 
 
 /****************************************************************************************\
 *                                    C++ 11                                              *
 \****************************************************************************************/
-#ifndef CV_CXX11
-#  if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
-#    define CV_CXX11 1
+#ifdef __cplusplus
+// MSVC was stuck at __cplusplus == 199711L for a long time, even where it supports C++11,
+// so check _MSC_VER instead. See:
+// <https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus>
+#  if defined(_MSC_VER)
+#    if _MSC_VER < 1800
+#      error "OpenCV 4.x+ requires enabled C++11 support"
+#    endif
+#  elif __cplusplus < 201103L
+#    error "OpenCV 4.x+ requires enabled C++11 support"
 #  endif
-#else
-#  if CV_CXX11 == 0
-#    undef CV_CXX11
-#  endif
-#endif
-#ifndef CV_CXX11
-#  error "OpenCV 4.x+ requires enabled C++11 support"
 #endif
 
-#define CV_CXX_MOVE_SEMANTICS 1
-#define CV_CXX_MOVE(x) std::move(x)
-#define CV_CXX_STD_ARRAY 1
-#include <array>
+#ifndef CV_CXX11
+#  define CV_CXX11 1
+#endif
+
 #ifndef CV_OVERRIDE
 #  define CV_OVERRIDE override
 #endif
+
 #ifndef CV_FINAL
 #  define CV_FINAL final
 #endif
 
 #ifndef CV_NOEXCEPT
-#  if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900/*MSVS 2015*/)
-#    define CV_NOEXCEPT noexcept
-#  endif
-#endif
-#ifndef CV_NOEXCEPT
-#  define CV_NOEXCEPT
+#  define CV_NOEXCEPT noexcept
 #endif
 
 #ifndef CV_CONSTEXPR
-#  if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900/*MSVS 2015*/)
-#    define CV_CONSTEXPR constexpr
-#  endif
-#endif
-#ifndef CV_CONSTEXPR
-#  define CV_CONSTEXPR
+#  define CV_CONSTEXPR constexpr
 #endif
 
-// Integer types portatibility
-#ifdef OPENCV_STDINT_HEADER
-#include OPENCV_STDINT_HEADER
-#elif defined(__cplusplus)
-#if defined(_MSC_VER) && _MSC_VER < 1600 /* MSVS 2010 */
-namespace cv {
-typedef signed char int8_t;
-typedef unsigned char uint8_t;
-typedef signed short int16_t;
-typedef unsigned short uint16_t;
-typedef signed int int32_t;
-typedef unsigned int uint32_t;
-typedef signed __int64 int64_t;
-typedef unsigned __int64 uint64_t;
-}
-#elif defined(_MSC_VER) || __cplusplus >= 201103L
+// Integer types portability
+#ifdef __cplusplus
 #include <cstdint>
 namespace cv {
 using std::int8_t;
@@ -788,19 +817,6 @@ using std::uint32_t;
 using std::int64_t;
 using std::uint64_t;
 }
-#else
-#include <stdint.h>
-namespace cv {
-typedef ::int8_t int8_t;
-typedef ::uint8_t uint8_t;
-typedef ::int16_t int16_t;
-typedef ::uint16_t uint16_t;
-typedef ::int32_t int32_t;
-typedef ::uint32_t uint32_t;
-typedef ::int64_t int64_t;
-typedef ::uint64_t uint64_t;
-}
-#endif
 #else // pure C
 #include <stdint.h>
 #endif
@@ -809,42 +825,22 @@ typedef ::uint64_t uint64_t;
 namespace cv
 {
 
-class float16_t
+class hfloat
 {
 public:
 #if CV_FP16_TYPE
 
-    float16_t() : h(0) {}
-    explicit float16_t(float x) { h = (__fp16)x; }
+    hfloat() : h(0) {}
+    explicit hfloat(float x) { h = (__fp16)x; }
     operator float() const { return (float)h; }
-    static float16_t fromBits(ushort w)
-    {
-        Cv16suf u;
-        u.u = w;
-        float16_t result;
-        result.h = u.h;
-        return result;
-    }
-    static float16_t zero()
-    {
-        float16_t result;
-        result.h = (__fp16)0;
-        return result;
-    }
-    ushort bits() const
-    {
-        Cv16suf u;
-        u.h = h;
-        return u.u;
-    }
 protected:
     __fp16 h;
 
 #else
-    float16_t() : w(0) {}
-    explicit float16_t(float x)
+    hfloat() : w(0) {}
+    explicit hfloat(float x)
     {
-    #if CV_AVX2
+    #if CV_FP16 && CV_AVX2
         __m128 v = _mm_load_ss(&x);
         w = (ushort)_mm_cvtsi128_si32(_mm_cvtps_ph(v, 0));
     #else
@@ -875,7 +871,7 @@ protected:
 
     operator float() const
     {
-    #if CV_AVX2
+    #if CV_FP16 && CV_AVX2
         float f;
         _mm_store_ss(&f, _mm_cvtph_ps(_mm_cvtsi32_si128(w)));
         return f;
@@ -893,24 +889,36 @@ protected:
     #endif
     }
 
-    static float16_t fromBits(ushort b)
-    {
-        float16_t result;
-        result.w = b;
-        return result;
-    }
-    static float16_t zero()
-    {
-        float16_t result;
-        result.w = (ushort)0;
-        return result;
-    }
-    ushort bits() const { return w; }
 protected:
     ushort w;
 
 #endif
 };
+
+inline hfloat hfloatFromBits(ushort w) {
+#if CV_FP16_TYPE
+    Cv16suf u;
+    u.u = w;
+    hfloat res(float(u.h));
+    return res;
+#else
+    Cv32suf out;
+
+    unsigned t = ((w & 0x7fff) << 13) + 0x38000000;
+    unsigned sign = (w & 0x8000) << 16;
+    unsigned e = w & 0x7c00;
+
+    out.u = t + (1 << 23);
+    out.u = (e >= 0x7c00 ? t + 0x38000000 :
+            e == 0 ? (static_cast<void>(out.f -= 6.103515625e-05f), out.u) : t) | sign;
+    hfloat res(out.f);
+    return res;
+#endif
+}
+
+#if !defined(__OPENCV_BUILD) && !(defined __STDCPP_FLOAT16_T__) && !(defined __ARM_NEON)
+typedef hfloat float16_t;
+#endif
 
 }
 #endif

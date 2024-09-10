@@ -1037,12 +1037,12 @@ inline scalartype v_reduce_sum(const _Tpvec& a) \
     return (scalartype)msa_sum_##suffix(a.val); \
 }
 
-OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_uint8x16, unsigned char, u8)
-OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_int8x16, char, s8)
-OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_uint16x8, unsigned short, u16)
-OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_int16x8, short, s16)
-OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_uint32x4, unsigned, u32)
-OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_int32x4, int, s32)
+OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_uint8x16, unsigned short, u8)
+OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_int8x16, short, s8)
+OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_uint16x8, unsigned, u16)
+OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_int16x8, int, s16)
+OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_uint32x4, uint64_t, u32)
+OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_int32x4, int64_t, s32)
 OPENCV_HAL_IMPL_MSA_REDUCE_SUM(v_float32x4, float, f32)
 
 inline uint64 v_reduce_sum(const v_uint64x2& a)
@@ -1838,7 +1838,7 @@ inline v_float32x4 v_broadcast_element(const v_float32x4& a)
 
 ////// FP16 support ///////
 #if CV_FP16
-inline v_float32x4 v_load_expand(const float16_t* ptr)
+inline v_float32x4 v_load_expand(const hfloat* ptr)
 {
 #ifndef msa_ld1_f16
     v4f16 v = (v4f16)msa_ld1_s16((const short*)ptr);
@@ -1848,7 +1848,7 @@ inline v_float32x4 v_load_expand(const float16_t* ptr)
     return v_float32x4(msa_cvt_f32_f16(v));
 }
 
-inline void v_pack_store(float16_t* ptr, const v_float32x4& v)
+inline void v_pack_store(hfloat* ptr, const v_float32x4& v)
 {
     v4f16 hv = msa_cvt_f16_f32(v.val);
 
@@ -1859,7 +1859,7 @@ inline void v_pack_store(float16_t* ptr, const v_float32x4& v)
 #endif
 }
 #else
-inline v_float32x4 v_load_expand(const float16_t* ptr)
+inline v_float32x4 v_load_expand(const hfloat* ptr)
 {
     float buf[4];
     for( int i = 0; i < 4; i++ )
@@ -1867,12 +1867,12 @@ inline v_float32x4 v_load_expand(const float16_t* ptr)
     return v_load(buf);
 }
 
-inline void v_pack_store(float16_t* ptr, const v_float32x4& v)
+inline void v_pack_store(hfloat* ptr, const v_float32x4& v)
 {
     float buf[4];
     v_store(buf, v);
     for( int i = 0; i < 4; i++ )
-        ptr[i] = (float16_t)buf[i];
+        ptr[i] = (hfloat)buf[i];
 }
 #endif
 
