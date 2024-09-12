@@ -10,16 +10,26 @@
 #include <opencv2/gapi/gmat.hpp>
 #include <opencv2/gapi/own/exports.hpp>
 
+// Forward declaration
+namespace cv {
+namespace gapi {
+namespace s11n {
+struct IOStream;
+struct IIStream;
+} // namespace s11n
+} // namespace gapi
+} // namespace cv
+
 namespace cv {
 
 // "Remote Mat", a general class which provides an abstraction layer over the data
 // storage and placement (host, remote device etc) and allows to access this data.
 //
-// The device specific implementation is hidden in the RMat::Adapter class
+// The device specific implementation is hidden in the RMat::IAdapter class
 //
 // The basic flow is the following:
 // * Backend which is aware of the remote device:
-//   - Implements own AdapterT class which is derived from RMat::Adapter
+//   - Implements own AdapterT class which is derived from RMat::IAdapter
 //   - Wraps device memory into RMat via make_rmat utility function:
 //         cv::RMat rmat = cv::make_rmat<AdapterT>(args);
 //
@@ -32,6 +42,9 @@ namespace cv {
 //         performCalculations(in_view, out_view);
 //         // data from out_view is transferred to the device when out_view is destroyed
 //     }
+/** \addtogroup gapi_data_structures
+ * @{
+ */
 class GAPI_EXPORTS RMat
 {
 public:
@@ -44,11 +57,11 @@ public:
     {
     public:
         using DestroyCallback = std::function<void()>;
+        using stepsT = std::vector<size_t>;
 
         View() = default;
-        View(const GMatDesc& desc, uchar* data, size_t step = 0u, DestroyCallback&& cb = nullptr)
-            : m_desc(desc), m_data(data), m_step(step == 0u ? elemSize()*cols() : step), m_cb(std::move(cb))
-        {}
+        View(const GMatDesc& desc, uchar* data, const stepsT& steps = {}, DestroyCallback&& cb = nullptr);
+        View(const GMatDesc& desc, uchar* data, size_t step, DestroyCallback&& cb = nullptr);
 
         View(const View&) = delete;
         View& operator=(const View&) = delete;
@@ -60,38 +73,55 @@ public:
         const std::vector<int>& dims() const { return m_desc.dims; }
         int cols() const { return m_desc.size.width; }
         int rows() const { return m_desc.size.height; }
-        int type() const { return CV_MAKE_TYPE(depth(), chan()); }
+        int type() const;
         int depth() const { return m_desc.depth; }
         int chan() const { return m_desc.chan; }
         size_t elemSize() const { return CV_ELEM_SIZE(type()); }
 
-        template<typename T = uchar> T* ptr(int y = 0, int x = 0) {
-            return reinterpret_cast<T*>(m_data + m_step*y + x*CV_ELEM_SIZE(type()));
+        template<typename T = uchar> T* ptr(int y = 0) {
+            return reinterpret_cast<T*>(m_data + step()*y);
         }
-        template<typename T = uchar> const T* ptr(int y = 0, int x = 0) const {
-            return reinterpret_cast<const T*>(m_data + m_step*y + x*CV_ELEM_SIZE(type()));
+        template<typename T = uchar> const T* ptr(int y = 0) const {
+            return reinterpret_cast<T*>(m_data + step()*y);
         }
-        size_t step() const { return m_step; }
+        template<typename T = uchar> T* ptr(int y, int x) {
+            return reinterpret_cast<T*>(m_data + step()*y + step(1)*x);
+        }
+        template<typename T = uchar> const T* ptr(int y, int x) const {
+            return reinterpret_cast<const T*>(m_data + step()*y + step(1)*x);
+        }
+        size_t step(size_t i = 0) const { GAPI_DbgAssert(i<m_steps.size()); return m_steps[i]; }
+        const stepsT& steps() const { return m_steps; }
 
     private:
         GMatDesc m_desc;
         uchar* m_data = nullptr;
-        size_t m_step = 0u;
+        stepsT m_steps = {0u};
         DestroyCallback m_cb = nullptr;
     };
 
     enum class Access { R, W };
-    class Adapter
+    class IAdapter
+    // Adapter class is going to be deleted and renamed as IAdapter
     {
     public:
-        virtual ~Adapter() = default;
+        virtual ~IAdapter() = default;
         virtual GMatDesc desc() const = 0;
         // Implementation is responsible for setting the appropriate callback to
         // the view when accessed for writing, to ensure that the data from the view
         // is transferred to the device when the view is destroyed
         virtual View access(Access) = 0;
+        virtual void serialize(cv::gapi::s11n::IOStream&) {
+            GAPI_Error("Generic serialize method of RMat::IAdapter does nothing by default. "
+                                 "Please, implement it in derived class to properly serialize the object.");
+        }
+        virtual void deserialize(cv::gapi::s11n::IIStream&) {
+            GAPI_Error("Generic deserialize method of RMat::IAdapter does nothing by default. "
+                                 "Please, implement it in derived class to properly deserialize the object.");
+        }
     };
-    using AdapterP = std::shared_ptr<Adapter>;
+    using Adapter = IAdapter; // Keep backward compatibility
+    using AdapterP = std::shared_ptr<IAdapter>;
 
     RMat() = default;
     RMat(AdapterP&& a) : m_adapter(std::move(a)) {}
@@ -108,9 +138,13 @@ public:
     // return nullptr if underlying type is different
     template<typename T> T* get() const
     {
-        static_assert(std::is_base_of<Adapter, T>::value, "T is not derived from Adapter!");
+        static_assert(std::is_base_of<IAdapter, T>::value, "T is not derived from IAdapter!");
         GAPI_Assert(m_adapter != nullptr);
         return dynamic_cast<T*>(m_adapter.get());
+    }
+
+    void serialize(cv::gapi::s11n::IOStream& os) const {
+        m_adapter->serialize(os);
     }
 
 private:
@@ -119,6 +153,7 @@ private:
 
 template<typename T, typename... Ts>
 RMat make_rmat(Ts&&... args) { return { std::make_shared<T>(std::forward<Ts>(args)...) }; }
+/** @} */
 
 } //namespace cv
 

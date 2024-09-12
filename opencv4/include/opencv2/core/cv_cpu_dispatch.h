@@ -55,7 +55,7 @@
 #  ifdef _MSC_VER
 #    include <nmmintrin.h>
 #    if defined(_M_X64)
-#      define CV_POPCNT_U64 _mm_popcnt_u64
+#      define CV_POPCNT_U64 (int)_mm_popcnt_u64
 #    endif
 #    define CV_POPCNT_U32 _mm_popcnt_u32
 #  else
@@ -78,6 +78,10 @@
 #    include <immintrin.h>
 #  endif
 #  define CV_FP16 1
+#endif
+#ifdef CV_CPU_COMPILE_NEON_DOTPROD
+#  include <arm_neon.h>
+#  define CV_NEON_DOT 1
 #endif
 #ifdef CV_CPU_COMPILE_AVX2
 #  include <immintrin.h>
@@ -137,13 +141,14 @@
 # include <Intrin.h>
 # include <arm_neon.h>
 # define CV_NEON 1
-#elif defined(__ARM_NEON__) || (defined (__ARM_NEON) && defined(__aarch64__))
+#elif defined(__ARM_NEON)
 #  include <arm_neon.h>
 #  define CV_NEON 1
 #endif
 
-#if defined(__ARM_NEON__) || defined(__aarch64__)
-#  include <arm_neon.h>
+#if defined(__riscv) && defined(__riscv_vector) && defined(__riscv_vector_071)
+# include<riscv_vector.h>
+# define CV_RVV071 1
 #endif
 
 #ifdef CV_CPU_COMPILE_VSX
@@ -163,6 +168,16 @@
 #  define CV_MSA 1
 #endif
 
+#ifdef CV_CPU_COMPILE_LSX
+#  include <lsxintrin.h>
+#  define CV_LSX 1
+#endif
+
+#ifdef CV_CPU_COMPILE_LASX
+#  include <lasxintrin.h>
+#  define CV_LASX 1
+#endif
+
 #ifdef __EMSCRIPTEN__
 #  define CV_WASM_SIMD 1
 #  include <wasm_simd128.h>
@@ -170,6 +185,7 @@
 
 #if defined CV_CPU_COMPILE_RVV
 #  define CV_RVV 1
+#  include <riscv_vector.h>
 #endif
 
 #endif // CV_ENABLE_INTRINSICS && !CV_DISABLE_OPTIMIZATION && !__CUDACC__
@@ -209,7 +225,7 @@ struct VZeroUpperGuard {
 # include <Intrin.h>
 # include <arm_neon.h>
 # define CV_NEON 1
-#elif defined(__ARM_NEON__) || (defined (__ARM_NEON) && defined(__aarch64__))
+#elif defined(__ARM_NEON)
 #  include <arm_neon.h>
 #  define CV_NEON 1
 #elif defined(__VSX__) && defined(__PPC64__) && defined(__LITTLE_ENDIAN__)
@@ -218,6 +234,11 @@ struct VZeroUpperGuard {
 #  undef pixel
 #  undef bool
 #  define CV_VSX 1
+#endif
+
+#ifdef __F16C__
+#  include <immintrin.h>
+#  define CV_FP16 1
 #endif
 
 #endif // !__OPENCV_BUILD && !__CUDACC (Compatibility code)
@@ -332,6 +353,10 @@ struct VZeroUpperGuard {
 #  define CV_NEON 0
 #endif
 
+#ifndef CV_RVV071
+#  define CV_RVV071 0
+#endif
+
 #ifndef CV_VSX
 #  define CV_VSX 0
 #endif
@@ -350,4 +375,12 @@ struct VZeroUpperGuard {
 
 #ifndef CV_RVV
 #  define CV_RVV 0
+#endif
+
+#ifndef CV_LSX
+#  define CV_LSX 0
+#endif
+
+#ifndef CV_LASX
+#  define CV_LASX 0
 #endif

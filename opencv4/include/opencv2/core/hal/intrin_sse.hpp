@@ -244,7 +244,13 @@ struct v_uint64x2
     explicit v_uint64x2(__m128i v) : val(v) {}
     v_uint64x2(uint64 v0, uint64 v1)
     {
+#if defined(_MSC_VER) && _MSC_VER >= 1920/*MSVS 2019*/ && defined(_M_X64) && !defined(__clang__)
+        val = _mm_setr_epi64x((int64_t)v0, (int64_t)v1);
+#elif defined(__GNUC__)
+        val = _mm_setr_epi64((__m64)v0, (__m64)v1);
+#else
         val = _mm_setr_epi32((int)v0, (int)(v0 >> 32), (int)v1, (int)(v1 >> 32));
+#endif
     }
 
     uint64 get0() const
@@ -272,7 +278,13 @@ struct v_int64x2
     explicit v_int64x2(__m128i v) : val(v) {}
     v_int64x2(int64 v0, int64 v1)
     {
+#if defined(_MSC_VER) && _MSC_VER >= 1920/*MSVS 2019*/ && defined(_M_X64) && !defined(__clang__)
+        val = _mm_setr_epi64x((int64_t)v0, (int64_t)v1);
+#elif defined(__GNUC__)
+        val = _mm_setr_epi64((__m64)v0, (__m64)v1);
+#else
         val = _mm_setr_epi32((int)v0, (int)(v0 >> 32), (int)v1, (int)(v1 >> 32));
+#endif
     }
 
     int64 get0() const
@@ -1909,11 +1921,12 @@ OPENCV_HAL_IMPL_SSE_EXPAND(v_int16x8,  v_int32x4,   short,    _v128_cvtepi16_epi
 OPENCV_HAL_IMPL_SSE_EXPAND(v_uint32x4, v_uint64x2,  unsigned, _v128_cvtepu32_epi64)
 OPENCV_HAL_IMPL_SSE_EXPAND(v_int32x4,  v_int64x2,   int,      _v128_cvtepi32_epi64)
 
-#define OPENCV_HAL_IMPL_SSE_EXPAND_Q(_Tpvec, _Tp, intrin)  \
-    inline _Tpvec v_load_expand_q(const _Tp* ptr)          \
-    {                                                      \
-        __m128i a = _mm_cvtsi32_si128(*(const int*)ptr);   \
-        return _Tpvec(intrin(a));                          \
+#define OPENCV_HAL_IMPL_SSE_EXPAND_Q(_Tpvec, _Tp, intrin)          \
+    inline _Tpvec v_load_expand_q(const _Tp* ptr)                  \
+    {                                                              \
+        typedef int CV_DECL_ALIGNED(1) unaligned_int;              \
+        __m128i a = _mm_cvtsi32_si128(*(const unaligned_int*)ptr); \
+        return _Tpvec(intrin(a));                                  \
     }
 
 OPENCV_HAL_IMPL_SSE_EXPAND_Q(v_uint32x4, uchar, _v128_cvtepu8_epi32)
@@ -3394,7 +3407,7 @@ inline v_float32x4 v_broadcast_element(const v_float32x4& v)
 
 ////////////// FP16 support ///////////////////////////
 
-inline v_float32x4 v_load_expand(const float16_t* ptr)
+inline v_float32x4 v_load_expand(const hfloat* ptr)
 {
 #if CV_FP16
     return v_float32x4(_mm_cvtph_ps(_mm_loadu_si128((const __m128i*)ptr)));
@@ -3414,7 +3427,7 @@ inline v_float32x4 v_load_expand(const float16_t* ptr)
 #endif
 }
 
-inline void v_pack_store(float16_t* ptr, const v_float32x4& v)
+inline void v_pack_store(hfloat* ptr, const v_float32x4& v)
 {
 #if CV_FP16
     __m128i fp16_value = _mm_cvtps_ph(v.val, 0);

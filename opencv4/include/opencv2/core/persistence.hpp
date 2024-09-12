@@ -309,8 +309,8 @@ public:
         READ        = 0, //!< value, open the file for reading
         WRITE       = 1, //!< value, open the file for writing
         APPEND      = 2, //!< value, open the file for appending
-        MEMORY      = 4, //!< flag, read data from source or write data to the internal buffer (which is
-        //!< returned by FileStorage::release)
+        MEMORY      = 4, /**< flag, read data from source or write data to the internal buffer (which is
+                              returned by FileStorage::release) */
         FORMAT_MASK = (7<<3), //!< mask for format flags
         FORMAT_AUTO = 0,      //!< flag, auto format
         FORMAT_XML  = (1<<3), //!< flag, XML format
@@ -403,8 +403,8 @@ public:
 
     /**
      * @brief Simplified writing API to use with bindings.
-     * @param name Name of the written object
-     * @param val Value of the written object
+     * @param name Name of the written object. When writing to sequences (a.k.a. "arrays"), pass an empty string.
+     * @param val Value of the written object.
      */
     CV_WRAP void write(const String& name, int val);
     /// @overload
@@ -437,9 +437,10 @@ public:
     CV_WRAP void writeComment(const String& comment, bool append = false);
 
     /** @brief Starts to write a nested structure (sequence or a mapping).
-    @param name name of the structure (if it's a member of parent mapping, otherwise it should be empty
+    @param name name of the structure. When writing to sequences (a.k.a. "arrays"), pass an empty string.
     @param flags type of the structure (FileNode::MAP or FileNode::SEQ (both with optional FileNode::FLOW)).
-    @param typeName usually an empty string
+    @param typeName optional name of the type you store. The effect of setting this depends on the storage format.
+    I.e. if the format has a specification for storing type information, this parameter is used.
     */
     CV_WRAP void startWriteStruct(const String& name, int flags, const String& typeName=String());
 
@@ -695,9 +696,6 @@ protected:
 
 /////////////////// XML & YAML I/O implementation //////////////////
 
-//! @relates cv::FileStorage
-//! @{
-
 CV_EXPORTS void write( FileStorage& fs, const String& name, int value );
 CV_EXPORTS void write( FileStorage& fs, const String& name, float value );
 CV_EXPORTS void write( FileStorage& fs, const String& name, double value );
@@ -713,11 +711,6 @@ CV_EXPORTS void writeScalar( FileStorage& fs, int value );
 CV_EXPORTS void writeScalar( FileStorage& fs, float value );
 CV_EXPORTS void writeScalar( FileStorage& fs, double value );
 CV_EXPORTS void writeScalar( FileStorage& fs, const String& value );
-
-//! @}
-
-//! @relates cv::FileNode
-//! @{
 
 CV_EXPORTS void read(const FileNode& node, int& value, int default_value);
 CV_EXPORTS void read(const FileNode& node, float& value, float default_value);
@@ -795,10 +788,7 @@ static inline void read(const FileNode& node, Range& value, const Range& default
     value.start = temp.x; value.end = temp.y;
 }
 
-//! @}
-
 /** @brief Writes string to a file storage.
-@relates cv::FileStorage
  */
 CV_EXPORTS FileStorage& operator << (FileStorage& fs, const String& str);
 
@@ -882,9 +872,6 @@ namespace internal
 } // internal
 
 //! @endcond
-
-//! @relates cv::FileStorage
-//! @{
 
 template<typename _Tp> static inline
 void write(FileStorage& fs, const _Tp& value)
@@ -1117,10 +1104,6 @@ static inline void write(FileStorage& fs, const std::vector<DMatch>& vec)
 }
 #endif
 
-//! @} FileStorage
-
-//! @relates cv::FileNode
-//! @{
 
 static inline
 void read(const FileNode& node, bool& value, bool default_value)
@@ -1207,11 +1190,6 @@ void read( const FileNode& node, std::vector<DMatch>& vec, const std::vector<DMa
         read(node, vec);
 }
 
-//! @} FileNode
-
-//! @relates cv::FileStorage
-//! @{
-
 /** @brief Writes data to a file storage.
  */
 template<typename _Tp> static inline
@@ -1243,11 +1221,6 @@ FileStorage& operator << (FileStorage& fs, char* value)
     return (fs << String(value));
 }
 
-//! @} FileStorage
-
-//! @relates cv::FileNodeIterator
-//! @{
-
 /** @brief Reads data from a file storage.
  */
 template<typename _Tp> static inline
@@ -1266,11 +1239,6 @@ FileNodeIterator& operator >> (FileNodeIterator& it, std::vector<_Tp>& vec)
     r(vec, (size_t)INT_MAX);
     return it;
 }
-
-//! @} FileNodeIterator
-
-//! @relates cv::FileNode
-//! @{
 
 /** @brief Reads data from a file storage.
  */
@@ -1322,11 +1290,6 @@ void operator >> (const FileNode& n, DMatch& m)
     it >> m.queryIdx >> m.trainIdx >> m.imgIdx >> m.distance;
 }
 
-//! @} FileNode
-
-//! @relates cv::FileNodeIterator
-//! @{
-
 CV_EXPORTS bool operator == (const FileNodeIterator& it1, const FileNodeIterator& it2);
 CV_EXPORTS bool operator != (const FileNodeIterator& it1, const FileNodeIterator& it2);
 
@@ -1341,8 +1304,6 @@ bool operator < (const FileNodeIterator& it1, const FileNodeIterator& it2)
 {
     return it1.remaining() > it2.remaining();
 }
-
-//! @} FileNodeIterator
 
 } // cv
 
