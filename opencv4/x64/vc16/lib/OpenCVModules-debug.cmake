@@ -13,7 +13,8 @@ set_target_properties(opencv_world PROPERTIES
   )
 
 list(APPEND _IMPORT_CHECK_TARGETS opencv_world )
-list(APPEND _IMPORT_CHECK_FILES_FOR_opencv_world "${_IMPORT_PREFIX}/x64/vc16/lib/opencv_world4100d.lib" "${_IMPORT_PREFIX}/x64/vc16/bin/opencv_world4100d.dll" )
+# Disabled check, as files are zipped
+#list(APPEND _IMPORT_CHECK_FILES_FOR_opencv_world "${_IMPORT_PREFIX}/x64/vc16/lib/opencv_world4100d.lib" "${_IMPORT_PREFIX}/x64/vc16/bin/opencv_world4100d.dll" )
 
 # Commands beyond this point should not need to know the version.
 set(CMAKE_IMPORT_FILE_VERSION)
