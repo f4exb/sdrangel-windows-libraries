@@ -1,0 +1,142 @@
+Built with:
+
+cmake ..\opencv -DCMAKE_INSTALL_PREFIX=../../opencv4cuda -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules -DWITH_CUDA=ON -DBUILD_LIST="core,highgui,imgproc,imgcodecs,videoio,bgsegm,dnn,cudev,cudaarithm,cudaimgproc,cudawarping,cudafilters,cudacodec,cudabgsegm,photo,ximgproc" -DCUDA_ARCH_BIN="" -DCUDA_ARCH_PTX="75" -G Ninja -DBUILD_TESTS=OFF -DCUDNN_LIBRARY="C:/Program Files/NVIDIA/CUDNN/v9.26/lib/13.4/x64/cudnn.lib" -DCUDNN_INCLUDE_DIR="C:/Program Files/NVIDIA/CUDNN/v9.26/include/13.4" -DCUDA_FAST_MATH=ON  -DBUILD_opencv_python3=OFF -DBUILD_opencv_python2=OFF -DOPENCV_DNN_CUDA=ON  -DWITH_NVCUVENC=ON -DCPU_BASELINE_REQUIRE=SSE4_2
+
+We only compile modules we use and for -DCUDA_ARCH_BIN="" -DCUDA_ARCH_PTX="75,89" (20x0 & 40x0) to keep DLL size down (otherwise opencv_cudafilters4130.dll is > 600MB)
+CUDA_ARCH_BIN="75" would generate code than only works on 20x0, not newer cards. CUDA_ARCH_PTX="75" supports newer cards as well (at the expense of JIT compilation)
+
+Can't use -DBUILD_opencv_world=ON to create a single DLL, as it ends up bigger than 100MB, which github doesn't allow us to commit.
+
+--
+-- General configuration for OpenCV 4.14.0 =====================================
+--   Version control:               4.14.0
+--
+--   Extra modules:
+--     Location (extra):            C:/Users/jon/source/repos/sdrangel-windows-libraries/build/opencv_contrib/modules
+--     Version control (extra):     4.14.0
+--
+--   Platform:
+--     Timestamp:                   2026-09-21T13:54:34Z
+--     Host:                        Windows 10.0.26200 AMD64
+--     CMake:                       4.3.2
+--     CMake generator:             Ninja
+--     CMake build tool:            C:/Applications/Ninja/ninja.exe
+--     MSVC:                        1944
+--     Configuration:               Release
+--     Algorithm Hint:              ALGO_HINT_ACCURATE
+--
+--   CPU/HW features:
+--     Baseline:                    SSE SSE2 SSE3 SSSE3 SSE4_1 POPCNT SSE4_2
+--       requested:                 SSE3
+--       required:                  SSE4_2
+--     Dispatched code generation:  AVX FP16 AVX2 AVX512_SKX
+--       requested:                 SSE4_1 SSE4_2 AVX FP16 AVX2 AVX512_SKX
+--       AVX (9 files):             + AVX
+--       FP16 (0 files):            + AVX FP16
+--       AVX2 (38 files):           + AVX FP16 AVX2 FMA3
+--       AVX512_SKX (19 files):     + AVX FP16 AVX2 FMA3 AVX_512F AVX512_COMMON AVX512_SKX
+--
+--   C/C++:
+--     Built as dynamic libs?:      YES
+--     C++ standard:                11
+--     C++ Compiler:                C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe  (ver 19.44.35229.0)
+--     C++ flags (Release):         /DWIN32 /D_WINDOWS /W4 /GR  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi  /fp:precise /FS    /EHa /wd4127 /wd4251 /wd4324 /wd4275 /wd4512 /wd4589 /wd4819  /O2 /Ob2 /DNDEBUG
+--     C++ flags (Debug):           /DWIN32 /D_WINDOWS /W4 /GR  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi  /fp:precise /FS    /EHa /wd4127 /wd4251 /wd4324 /wd4275 /wd4512 /wd4589 /wd4819  /Zi /Ob0 /Od /RTC1
+--     C Compiler:                  C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+--     C flags (Release):           /DWIN32 /D_WINDOWS /W3  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi  /fp:precise /FS      /O2 /Ob2 /DNDEBUG
+--     C flags (Debug):             /DWIN32 /D_WINDOWS /W3  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi  /fp:precise /FS    /Zi /Ob0 /Od /RTC1
+--     Linker flags (Release):      /machine:x64  /INCREMENTAL:NO
+--     Linker flags (Debug):        /machine:x64  /debug /INCREMENTAL
+--     ccache:                      NO
+--     Precompiled headers:         NO
+--     Extra dependencies:          cudart_static.lib nppc.lib nppial.lib nppicc.lib nppidei.lib nppif.lib nppig.lib nppim.lib nppist.lib nppisu.lib nppitc.lib npps.lib cublas.lib cudnn.lib cufft.lib -LIBPATH:"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.4/lib/x64" -LIBPATH:"C:/Program Files/NVIDIA/CUDNN/v9.26/lib/13.4/x64"
+--     3rdparty dependencies:
+--
+--   OpenCV modules:
+--     To be built:                 bgsegm calib3d core cudaarithm cudabgsegm cudacodec cudafilters cudaimgproc cudawarping cudev dnn features2d flann highgui imgcodecs imgproc photo video videoio ximgproc
+--     Disabled:                    python3 world
+--     Disabled by dependency:      aruco bioinspired ccalib cudafeatures2d cudalegacy cudaobjdetect cudaoptflow cudastereo datasets dnn_objdetect dnn_superres dpm face fuzzy gapi hfs img_hash intensity_transform java_bindings_generator js_bindings_generator line_descriptor mcc ml objc_bindings_generator objdetect optflow phase_unwrapping plot python_bindings_generator python_tests quality rapid reg rgbd saliency shape signal stereo stitching structured_light superres surface_matching text tracking ts videostab wechat_qrcode xfeatures2d xobjdetect xphoto
+--     Unavailable:                 alphamat cannops cvv fastcv freetype hdf java julia matlab ovis python2 sfm viz
+--     Applications:                apps
+--     Documentation:               NO
+--     Non-free algorithms:         NO
+--
+--   Windows RT support:            NO
+--
+--   GUI:                           WIN32UI
+--     Win32 UI:                    YES
+--     VTK support:                 NO
+--
+--   Media I/O:
+--     ZLib:                        build (ver 1.3.2)
+--     JPEG:                        build-libjpeg-turbo (ver 3.1.2-70)
+--       SIMD Support Request:      YES
+--       SIMD Support:              YES
+--     WEBP:                        build (ver decoder: 0x0210, encoder: 0x0210, demux: 0x0107)
+--     AVIF:                        NO
+--     PNG:                         build (ver 1.6.57)
+--       SIMD Support Request:      YES
+--       SIMD Support:              YES (Intel SSE)
+--       Metadata Support:          EXIF XMP ICC cICP
+--     TIFF:                        build (ver 42 - 4.7.1)
+--     JPEG 2000:                   build (ver 2.5.3)
+--     OpenEXR:                     build (ver 2.3.0)
+--     GIF:                         YES
+--     HDR:                         YES
+--     SUNRASTER:                   YES
+--     PXM:                         YES
+--     PFM:                         YES
+--
+--   Video I/O:
+--     FFMPEG:                      YES (prebuilt binaries)
+--       avcodec:                   YES (61.19.100)
+--       avformat:                  YES (61.7.100)
+--       avutil:                    YES (59.39.100)
+--       swscale:                   YES (8.3.100)
+--       avdevice:                  NO
+--     GStreamer:                   NO
+--     DirectShow:                  YES
+--     Media Foundation:            YES
+--       DXVA:                      YES
+--     Orbbec:                      YES
+--
+--   Parallel framework:            Concurrency
+--
+--   Trace:                         YES (with Intel ITT(3.25.4))
+--
+--   Other third-party libraries:
+--     Intel IPP:                   2026.0.0 [2026.0.0]
+--            at:                   C:/Users/jon/source/repos/sdrangel-windows-libraries/build/build_opencv4cuda/3rdparty/ippicv/ippicv_win/icv
+--     Intel IPP IW:                sources (2026.0.0)
+--               at:                C:/Users/jon/source/repos/sdrangel-windows-libraries/build/build_opencv4cuda/3rdparty/ippicv/ippicv_win/iw
+--     Lapack:                      NO
+--     Eigen:                       NO
+--     Custom HAL:                  YES (ipp (ver 0.0.1))
+--     Protobuf:                    build (3.19.1)
+--     Flatbuffers:                 builtin/3rdparty (25.9.23)
+--
+--   NVIDIA CUDA:                   YES (ver 13.4, CUFFT CUBLAS NVCUVID NVCUVENC FAST_MATH)
+--     NVIDIA GPU arch:
+--     NVIDIA PTX archs:            75
+--
+--   cuDNN:                         YES (ver 9.26.0)
+--
+--   OpenCL:                        YES (NVD3D11)
+--     Include path:                C:/Users/jon/source/repos/sdrangel-windows-libraries/build/opencv/3rdparty/include/opencl/1.2
+--     Link libraries:              Dynamic load
+--
+--   Python (for build):            C:/Applications/Python312/python3.exe
+--
+--   Java:
+--     ant:                         NO
+--     Java:                        NO
+--     JNI:                         C:/Program Files/Java/jdk-17/include C:/Program Files/Java/jdk-17/include/win32 C:/Program Files/Java/jdk-17/include
+--     Java wrappers:               NO
+--     Java tests:                  NO
+--
+--   Install to:                    C:/Users/jon/source/repos/sdrangel-windows-libraries/opencv4cuda
+-- -----------------------------------------------------------------
+--
+-- Configuring done (25.1s)
+-- Generating done (0.9s)
+-- Build files have been written to: C:/Users/jon/source/repos/sdrangel-windows-libraries/build/build_opencv4cuda

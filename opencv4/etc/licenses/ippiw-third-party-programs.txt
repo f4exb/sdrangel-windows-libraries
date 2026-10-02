@@ -1,2 +1,4 @@
-This third-party-programs.txt file applies to the Intel(R) Integrated Performance Primitives 2021 Update 11
-There are not any Third Party Programs (as defined in the Agreement) included in this version of the Intel(R) Integrated Performance Primitives.
+Copyright (C) 2024 Intel Corporation
+
+This third-party-programs.txt file applies to the Intel(R) Integrated Performance Primitives 2026.0.0
+There are no Third Party Programs (as defined in the Agreement) included in this version of the Intel(R) Integrated Performance Primitives.

@@ -1,0 +1,125 @@
+cmake ..\opencv -DCMAKE_INSTALL_PREFIX=../../opencv4 -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules -DWITH_CUDA=OFF -DBUILD_LIST="core,highgui,imgproc,imgcodecs,videoio,bgsegm,dnn,photo,ximgproc" -G Ninja -DBUILD_TESTS=OFF -DBUILD_opencv_python3=OFF -DBUILD_opencv_python2=OFF  -DCPU_BASELINE_REQUIRE=SSE4_2
+
+--
+-- General configuration for OpenCV 4.14.0 =====================================
+--   Version control:               4.14.0
+--
+--   Extra modules:
+--     Location (extra):            C:/Users/jon/source/repos/sdrangel-windows-libraries/build/opencv_contrib/modules
+--     Version control (extra):     4.14.0
+--
+--   Platform:
+--     Timestamp:                   2026-09-21T13:37:38Z
+--     Host:                        Windows 10.0.26200 AMD64
+--     CMake:                       4.3.2
+--     CMake generator:             Ninja
+--     CMake build tool:            C:/Applications/Ninja/ninja.exe
+--     MSVC:                        1944
+--     Configuration:               Release
+--     Algorithm Hint:              ALGO_HINT_ACCURATE
+--
+--   CPU/HW features:
+--     Baseline:                    SSE SSE2 SSE3 SSSE3 SSE4_1 POPCNT SSE4_2
+--       requested:                 SSE3
+--       required:                  SSE4_2
+--     Dispatched code generation:  AVX FP16 AVX2 AVX512_SKX
+--       requested:                 SSE4_1 SSE4_2 AVX FP16 AVX2 AVX512_SKX
+--       AVX (9 files):             + AVX
+--       FP16 (0 files):            + AVX FP16
+--       AVX2 (38 files):           + AVX FP16 AVX2 FMA3
+--       AVX512_SKX (19 files):     + AVX FP16 AVX2 FMA3 AVX_512F AVX512_COMMON AVX512_SKX
+--
+--   C/C++:
+--     Built as dynamic libs?:      YES
+--     C++ standard:                11
+--     C++ Compiler:                C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe  (ver 19.44.35229.0)
+--     C++ flags (Release):         /DWIN32 /D_WINDOWS /W4 /GR  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi  /fp:precise /FS    /EHa /wd4127 /wd4251 /wd4324 /wd4275 /wd4512 /wd4589 /wd4819  /O2 /Ob2 /DNDEBUG
+--     C++ flags (Debug):           /DWIN32 /D_WINDOWS /W4 /GR  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi  /fp:precise /FS    /EHa /wd4127 /wd4251 /wd4324 /wd4275 /wd4512 /wd4589 /wd4819  /Zi /Ob0 /Od /RTC1
+--     C Compiler:                  C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+--     C flags (Release):           /DWIN32 /D_WINDOWS /W3  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi  /fp:precise /FS      /O2 /Ob2 /DNDEBUG
+--     C flags (Debug):             /DWIN32 /D_WINDOWS /W3  /D _CRT_SECURE_NO_DEPRECATE /D _CRT_NONSTDC_NO_DEPRECATE /D _SCL_SECURE_NO_WARNINGS /Gy /bigobj /Oi  /fp:precise /FS    /Zi /Ob0 /Od /RTC1
+--     Linker flags (Release):      /machine:x64  /INCREMENTAL:NO
+--     Linker flags (Debug):        /machine:x64  /debug /INCREMENTAL
+--     ccache:                      NO
+--     Precompiled headers:         NO
+--     Extra dependencies:
+--     3rdparty dependencies:
+--
+--   OpenCV modules:
+--     To be built:                 bgsegm calib3d core dnn features2d flann highgui imgcodecs imgproc photo video videoio ximgproc
+--     Disabled:                    python3 world
+--     Disabled by dependency:      aruco bioinspired ccalib datasets dnn_objdetect dnn_superres dpm face fuzzy gapi hfs img_hash intensity_transform java_bindings_generator js_bindings_generator line_descriptor mcc ml objc_bindings_generator objdetect optflow phase_unwrapping plot python_bindings_generator python_tests quality rapid reg rgbd saliency shape signal stereo stitching structured_light superres surface_matching text tracking ts videostab wechat_qrcode xfeatures2d xobjdetect xphoto
+--     Unavailable:                 alphamat cannops cudaarithm cudabgsegm cudacodec cudafeatures2d cudafilters cudaimgproc cudalegacy cudaobjdetect cudaoptflow cudastereo cudawarping cudev cvv fastcv freetype hdf java julia matlab ovis python2 sfm viz
+--     Applications:                apps
+--     Documentation:               NO
+--     Non-free algorithms:         NO
+--
+--   Windows RT support:            NO
+--
+--   GUI:                           WIN32UI
+--     Win32 UI:                    YES
+--     VTK support:                 NO
+--
+--   Media I/O:
+--     ZLib:                        build (ver 1.3.2)
+--     JPEG:                        build-libjpeg-turbo (ver 3.1.2-70)
+--       SIMD Support Request:      YES
+--       SIMD Support:              YES
+--     WEBP:                        build (ver decoder: 0x0210, encoder: 0x0210, demux: 0x0107)
+--     AVIF:                        NO
+--     PNG:                         build (ver 1.6.57)
+--       SIMD Support Request:      YES
+--       SIMD Support:              YES (Intel SSE)
+--       Metadata Support:          EXIF XMP ICC cICP
+--     TIFF:                        build (ver 42 - 4.7.1)
+--     JPEG 2000:                   build (ver 2.5.3)
+--     OpenEXR:                     build (ver 2.3.0)
+--     GIF:                         YES
+--     HDR:                         YES
+--     SUNRASTER:                   YES
+--     PXM:                         YES
+--     PFM:                         YES
+--
+--   Video I/O:
+--     FFMPEG:                      YES (prebuilt binaries)
+--       avcodec:                   YES (61.19.100)
+--       avformat:                  YES (61.7.100)
+--       avutil:                    YES (59.39.100)
+--       swscale:                   YES (8.3.100)
+--       avdevice:                  NO
+--     GStreamer:                   NO
+--     DirectShow:                  YES
+--     Media Foundation:            YES
+--       DXVA:                      YES
+--     Orbbec:                      YES
+--
+--   Parallel framework:            Concurrency
+--
+--   Trace:                         YES (with Intel ITT(3.25.4))
+--
+--   Other third-party libraries:
+--     Intel IPP:                   2026.0.0 [2026.0.0]
+--            at:                   C:/Users/jon/source/repos/sdrangel-windows-libraries/build/build_opencv4/3rdparty/ippicv/ippicv_win/icv
+--     Intel IPP IW:                sources (2026.0.0)
+--               at:                C:/Users/jon/source/repos/sdrangel-windows-libraries/build/build_opencv4/3rdparty/ippicv/ippicv_win/iw
+--     Lapack:                      NO
+--     Eigen:                       NO
+--     Custom HAL:                  YES (ipp (ver 0.0.1))
+--     Protobuf:                    build (3.19.1)
+--     Flatbuffers:                 builtin/3rdparty (25.9.23)
+--
+--   OpenCL:                        YES (NVD3D11)
+--     Include path:                C:/Users/jon/source/repos/sdrangel-windows-libraries/build/opencv/3rdparty/include/opencl/1.2
+--     Link libraries:              Dynamic load
+--
+--   Python (for build):            C:/Applications/Python312/python3.exe
+--
+--   Java:
+--     ant:                         NO
+--     Java:                        NO
+--     JNI:                         C:/Program Files/Java/jdk-17/include C:/Program Files/Java/jdk-17/include/win32 C:/Program Files/Java/jdk-17/include
+--     Java wrappers:               NO
+--     Java tests:                  NO
+--
+--   Install to:                    C:/Users/jon/source/repos/sdrangel-windows-libraries/opencv4
+-- -----------------------------------------------------------------
