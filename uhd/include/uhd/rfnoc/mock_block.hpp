@@ -62,6 +62,16 @@ public:
         }
     }
 
+    void burst_poke32(uint32_t addr,
+        const std::vector<uint32_t> data,
+        uhd::time_spec_t timestamp,
+        bool ack) override
+    {
+        for (size_t i = 0; i < data.size(); i++) {
+            poke32(addr, data[i], timestamp, ack);
+        }
+    }
+
     uint32_t peek32(uint32_t addr, uhd::time_spec_t time) override
     {
         _peek_cb(addr, time);
@@ -83,22 +93,34 @@ public:
         return result;
     }
 
-    void poll32(uint32_t addr,
+    std::vector<uint32_t> burst_peek32(
+        uint32_t addr, size_t length, uhd::time_spec_t time) override
+    {
+        std::vector<uint32_t> result(length, 0);
+        for (size_t i = 0; i < length; ++i) {
+            result[i] = peek32(addr, time);
+        }
+        return result;
+    }
+
+    std::optional<uint32_t> poll32(uint32_t addr,
         uint32_t data,
         uint32_t mask,
         uhd::time_spec_t /* timeout */,
         uhd::time_spec_t time = uhd::time_spec_t::ASAP,
-        bool /* ack */        = false) override
+        bool ack              = false) override
     {
         if (force_timeout) {
             throw uhd::op_timeout("timeout");
         }
 
-        if ((peek32(addr, time) & mask) == data) {
+        const uint32_t reg_val = peek32(addr, time);
+        if ((reg_val & mask) == data) {
             UHD_LOG_INFO("MOCK_REG_IFACE", "poll32() successful at addr " << addr);
         } else {
             UHD_LOG_INFO("MOCK_REG_IFACE", "poll32() not successful at addr " << addr);
         }
+        return ack ? std::optional<uint32_t>(reg_val) : std::nullopt;
     }
 
     void sleep(uhd::time_spec_t /*duration*/, bool /*ack*/) override
@@ -140,12 +162,19 @@ public:
         // nop
     }
 
+    register_iface_stats get_stats() const override
+    {
+        // Mock implementation - return zero stats
+        return {};
+    }
+
     bool force_timeout = false;
 
     //! All pokes end up writing to this map
     std::unordered_map<uint32_t, uint32_t> read_memory;
-    //! All peeks read from this map. A peek will fail if the address has not
-    // been previously set.
+    /*! All peeks read from this map. A peek will fail if the address has not
+     * been previously set.
+     */
     std::unordered_map<uint32_t, uint32_t> write_memory;
 
 protected:
@@ -168,8 +197,11 @@ struct UHD_API mock_block_container
     //! Reference to the prop tree object the block sees
     uhd::property_tree::sptr tree;
 
-    //! Use this to retrieve a reference to the block controller. Make sure that
-    // the register space is appropiately primed before doing so.
+    /*! \brief Use this to retrieve a reference to the block controller.
+     *
+     * Make sure that the register space is appropiately primed before doing so.
+     * the register space is appropiately primed before doing so.
+     */
     template <typename block_type = noc_block_base>
     std::shared_ptr<block_type> get_block()
     {

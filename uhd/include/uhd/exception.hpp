@@ -303,7 +303,7 @@ struct UHD_API routing_error : rfnoc_error
  */
 #define UHD_THROW_SITE_INFO(what)                                                     \
     std::string(std::string(what) + "\n" + "  in " + std::string(UHD_FUNCTION) + "\n" \
-                + "  at " + std::string(__FILE__) + ":" + BOOST_STRINGIZE(__LINE__)   \
+                + "  at " + std::string(__FILE__) + ":" + std::to_string(__LINE__)    \
                 + "\n")
 
 /*!

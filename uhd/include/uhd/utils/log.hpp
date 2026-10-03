@@ -8,10 +8,13 @@
 #pragma once
 
 #include <uhd/config.hpp>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <type_traits>
+#include <boost/none.hpp>
 #include <boost/optional.hpp>
+#include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <string>
@@ -51,13 +54,13 @@
  * The minimum log level is defined by `-DUHD_LOG_MIN_LEVEL` at compile time,
  * and this value can be increased at runtime by specifying the `UHD_LOG_LEVEL`
  * environment variable. This minimum logging level applies to any form of
- * runtime logging. Thus for example if this minimum is set to 3 (`info`), then
- * during runtime no logging at levels below 3 can be provided.
+ * runtime logging. Thus for example if this minimum is set to 2 (`info`), then
+ * during runtime no logging at levels below 2 can be provided.
  *
- * The following set the minimum logging level to 3 (`info`):
- *   - Example pre-processor define: `-DUHD_LOG_MIN_LEVEL=3`
+ * The following set the minimum logging level to 2 (`info`):
+ *   - Example pre-processor define: `-DUHD_LOG_MIN_LEVEL=2`
  *   - Example pre-processor define: `-DUHD_LOG_MIN_LEVEL=info`
- *   - Example environment variable: `export UHD_LOG_LEVEL=3`
+ *   - Example environment variable: `export UHD_LOG_LEVEL=2`
  *   - Example environment variable: `export UHD_LOG_LEVEL=info`
  *
  * The actual log level for console and file logging can be configured by
@@ -66,9 +69,9 @@
  * `-DUHD_LOG_CONSOLE_LEVEL` and `-DUHD_LOG_FILE_LEVEL`, respectively.
  *
  * These variables can be the name of a verbosity enum or integer value:
- *   - Example pre-processor define: `-DUHD_LOG_CONSOLE_LEVEL=3`
+ *   - Example pre-processor define: `-DUHD_LOG_CONSOLE_LEVEL=2`
  *   - Example pre-processor define: `-DUHD_LOG_CONSOLE_LEVEL=info`
- *   - Example environment variable: `export UHD_LOG_CONSOLE_LEVEL=3`
+ *   - Example environment variable: `export UHD_LOG_CONSOLE_LEVEL=2`
  *   - Example environment variable: `export UHD_LOG_CONSOLE_LEVEL=info`
  *
  * The `UHD_LOG_FILE_LEVEL` variable can be used in the same way.
@@ -123,10 +126,14 @@ enum severity_level {
     off     = 6, /**< logging is turned off */
 };
 
+namespace detail {
 /*! Parses a `severity_level` from a string. If a value could not be parsed,
  * returns none.
+ * Note: All of this is necessary to retain backward-compatibility with
+ * boost::optional. When we deprecate boost::optional from the API
+ * entirely, this can be removed.
  */
-boost::optional<uhd::log::severity_level> UHD_API parse_log_level_from_string(
+UHD_API std::optional<uhd::log::severity_level> parse_log_level_from_string_impl(
     const std::string& log_level_str);
 
 /*! Logging info structure
@@ -136,8 +143,8 @@ boost::optional<uhd::log::severity_level> UHD_API parse_log_level_from_string(
  */
 struct UHD_API logging_info
 {
-    logging_info() : verbosity(uhd::log::off) {}
-    logging_info(const boost::posix_time::ptime& time_,
+    logging_info() : verbosity(uhd::log::off), line(0) {}
+    logging_info(const std::chrono::system_clock::time_point& time_,
         const uhd::log::severity_level& verbosity_,
         const std::string& file_,
         const unsigned int& line_,
@@ -152,7 +159,7 @@ struct UHD_API logging_info
     { /* nop */
     }
 
-    boost::posix_time::ptime time;
+    std::chrono::system_clock::time_point time;
     uhd::log::severity_level verbosity;
     std::string file;
     unsigned int line;
@@ -160,6 +167,24 @@ struct UHD_API logging_info
     std::thread::id thread_id;
     std::string message;
 };
+
+} // namespace detail
+
+template <typename T = boost::optional<uhd::log::severity_level>,
+    std::enable_if_t<
+        std::is_same_v<T,
+            boost::optional<uhd::log::
+                    severity_level>> || std::is_same_v<T, std::optional<uhd::log::severity_level>>,
+        int> = 0>
+T parse_log_level_from_string(const std::string& log_level_str)
+{
+    if constexpr (std::is_same_v<T, boost::optional<uhd::log::severity_level>>) {
+        const auto level = detail::parse_log_level_from_string_impl(log_level_str);
+        return bool(level) ? boost::make_optional(*level) : boost::none;
+    } else {
+        return detail::parse_log_level_from_string_impl(log_level_str);
+    }
+}
 
 /*! Set the global log level
  *
@@ -256,10 +281,12 @@ UHD_API void set_logger_level(const std::string& logger, uhd::log::severity_leve
 #define RFNOC_LOG_FATAL(message)   UHD_LOG_FATAL(this->get_unique_id(), message)
 
 #ifndef UHD_LOG_FASTPATH_DISABLE
-//! Extra-fast logging macro for when speed matters.
-// No metadata is tracked. Only the message is displayed. This does not go
-// through the regular backends. Mostly used for printing the UOSDL characters
-// during streaming.
+/*! \brief Extra-fast logging macro for when speed matters.
+ *
+ * No metadata is tracked. Only the message is displayed. This does not go
+ * through the regular backends. Mostly used for printing the UOSDL characters
+ * during streaming.
+ */
 #    define UHD_LOG_FASTPATH(message) uhd::_log::log_fastpath(message);
 #else
 #    define UHD_LOG_FASTPATH(message)
@@ -324,14 +351,15 @@ public:
 
     // General insertion overload
     template <typename T>
-    INSERTION_OVERLOAD(T val)
+    INSERTION_OVERLOAD(T val);
 
     // Insertion overloads for std::ostream manipulators
-    INSERTION_OVERLOAD(std::ostream& (*val)(std::ostream&))
-        INSERTION_OVERLOAD(std::ios& (*val)(std::ios&))
-            INSERTION_OVERLOAD(std::ios_base& (*val)(std::ios_base&))
+    INSERTION_OVERLOAD(std::ostream& (*val)(std::ostream&));
+    INSERTION_OVERLOAD(std::ios& (*val)(std::ios&));
+    INSERTION_OVERLOAD(std::ios_base& (*val)(std::ios_base&));
 
-                private : uhd::log::logging_info _log_info;
+private:
+    uhd::log::detail::logging_info _log_info;
     std::ostringstream _ss;
     const bool _log_it;
 };

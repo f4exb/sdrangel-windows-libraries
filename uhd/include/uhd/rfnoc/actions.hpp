@@ -9,9 +9,16 @@
 #include <uhd/config.hpp>
 #include <uhd/types/device_addr.hpp>
 #include <uhd/types/metadata.hpp>
+#include <uhd/types/ranges.hpp>
 #include <uhd/types/stream_cmd.hpp>
+#include <uhd/types/time_spec.hpp>
+#include <uhd/types/tune_request.hpp>
+#include <uhd/types/tune_result.hpp>
 #include <boost/optional.hpp>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -34,8 +41,9 @@ public:
     const size_t id;
     //! A string identifier for this action
     std::string key;
-    //! An arbitrary payload. It is up to consumers and producers to
-    // (de-)serialize it.
+    /*! An arbitrary payload. It is up to consumers and producers to
+     * (de-)serialize it.
+     */
     std::vector<uint8_t> payload;
     //! A dictionary of key-value pairs. May be used as desired.
     uhd::device_addr_t args;
@@ -94,11 +102,49 @@ public:
 
     //! Factory function
     static sptr make(uhd::async_metadata_t::event_code_t event_code,
-        const boost::optional<uint64_t>& tsf);
+        const std::optional<uint64_t>& tsf);
+
+    /*! Factory function
+     *
+     * Required to avoid ambiguity between boost and std versions when using
+     * timestamp directly.
+     */
+    static sptr make(uhd::async_metadata_t::event_code_t event_code, uint64_t tsf)
+    {
+        return make(event_code, std::make_optional<uint64_t>(tsf));
+    }
+
+    //! Factory function (legacy, to support boost::optional)
+    [[deprecated("Prefer std::optional over boost::optional.")]] static sptr make(
+        uhd::async_metadata_t::event_code_t event_code,
+        const boost::optional<uint64_t>& tsf)
+    {
+        return make(
+            event_code, bool(tsf) ? std::make_optional<uint64_t>(*tsf) : std::nullopt);
+    }
 
 protected:
     tx_event_action_info(uhd::async_metadata_t::event_code_t event_code,
-        const boost::optional<uint64_t>& tsf);
+        const std::optional<uint64_t>& tsf);
+};
+
+//! Action object for graph-based tuning
+struct UHD_API tune_request_action_info : public action_info
+{
+public:
+    using sptr = std::shared_ptr<tune_request_action_info>;
+
+    uhd::tune_request_t tune_request;
+    uhd::time_spec_t time_spec;
+    uhd::tune_result_t tune_result;
+    uhd::freq_range_t dsp_range;
+    uhd::freq_range_t rf_range;
+    uhd::freq_range_t overall_freq_range;
+    //! Factory function
+    static sptr make(const uhd::tune_request_t tune_request);
+
+private:
+    tune_request_action_info(const uhd::tune_request_t tune_request);
 };
 
 }} /* namespace uhd::rfnoc */

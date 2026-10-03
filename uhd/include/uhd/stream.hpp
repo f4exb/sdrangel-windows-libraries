@@ -8,17 +8,20 @@
 #pragma once
 
 #include <uhd/config.hpp>
+#include <uhd/rfnoc/actions.hpp>
 #include <uhd/types/device_addr.hpp>
-#include <uhd/types/metadata.hpp>
 #include <uhd/types/ref_vector.hpp>
 #include <uhd/types/stream_cmd.hpp>
 #include <uhd/utils/noncopyable.hpp>
-#include <boost/utility.hpp>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace uhd {
+struct async_metadata_t;
+struct rx_metadata_t;
+struct tx_metadata_t;
 
 /*!
  * A struct of parameters to construct a streamer.
@@ -179,28 +182,62 @@ public:
     //! Typedef for a pointer to a single, or a collection of recv buffers
     typedef ref_vector<void*> buffs_type;
 
-    /*!
-     * Receive buffers containing samples described by the metadata.
+    /*! Receive buffers containing samples described by the metadata
      *
-     * Receive handles fragmentation as follows:
-     * If the buffer has insufficient space to hold all samples
-     * that were received in a single packet over-the-wire,
-     * then the buffer will be completely filled and the implementation
-     * will hold a pointer into the remaining portion of the packet.
-     * Subsequent calls will load from the remainder of the packet,
-     * and will flag the metadata to show that this is a fragment.
-     * The next call to receive, after the remainder becomes exhausted,
-     * will perform an over-the-wire receive as usual.
-     * See the rx metadata fragment flags and offset fields for details.
+     * This is the main streaming API call for receiving samples from any USRP.
+     * It will block and receive any incoming data from the device into the
+     * user-provided buffers (\p buffs) until one of the following conditions
+     * is met:
      *
-     * This is a blocking call and will not return until the number
-     * of samples returned have been written into each buffer.
-     * Under a timeout condition, the number of samples returned
-     * may be less than the number of samples specified.
+     * - The number of samples (or items) received equals \p nsamps_per_buff,
+     *   i.e., the buffers have been completely filled. In this case, the return
+     *   value of recv() equals \p nsamps_per_buff.
+     * - An end-of-burst packet was received. When this is the case, recv() will
+     *   immediately return, and assert the \p end_of_burst flag in the RX
+     *   metadata.
+     * - A timeout occurs, cf. \ref stream_rx_timeouts
+     * - If \p one_packet is set, then it will return as soon as one single
+     *   packet was received. It will attempt to return all the samples from the
+     *   packet that was processed.
+     * - A sequence error is detected (i.e., packets were dropped on the way to
+     *   the host computer). In particular for Ethernet-based devices, this may
+     *   occur if UDP packets get dropped. In this case, an error code is set in
+     *   the metadata object.
+     * - An invalid packet is received. \p metadata.error_code is set to
+     *   \p ERROR_CODE_BAD_PACKET.
+     * - For multi-channel streamers, if the streamer was not able to get
+     *   time-aligned samples from every channel, it will eventually give up
+     *   and set \p metadata.error_code to \p ERROR_CODE_ALIGNMENT.
+     * - An overrun is detected. This is the case when the software is calling
+     *   recv() too slowly, and the device or transport buffers are backing up.
+     *   In this case, samples may be dropped and an overrun condition is
+     *   reported via the RX metadata. Depending on the device and streaming
+     *   mode, the hardware may continue to produce samples (e.g., in continuous
+     *   streaming) or may pause/stop until reconfigured. However, recv() may
+     *   not immediately return whan an overrun is detected; for more details,
+     *   cf. \ref stream_rx_error_handling
      *
-     * The one_packet option allows the user to guarantee that
-     * the call will return after a single packet has been processed.
-     * This may be useful to maintain packet boundaries in some cases.
+     * Note that in many of these scenarios, the actual number of samples
+     * received is smaller than the number of samples requested. The precise
+     * number of samples that were received before the function returned is
+     * relayed as the return value of recv().
+     *
+     * The \p one_packet option allows the user to guarantee that the call will
+     * return after a single packet has been processed. This may be useful to
+     * maintain packet boundaries in some cases.
+     *
+     * \section stream_rx_frag Fragmentation
+     *
+     * If the buffer has insufficient space to hold all samples that were
+     * received in a single packet over-the-wire, then the buffer will be
+     * completely filled and the implementation will hold a pointer into the
+     * remaining portion of the packet.  Subsequent calls will load from the
+     * remainder of the packet, and will flag the metadata to show that this is
+     * a fragment.  The next call to receive, after the remainder becomes
+     * exhausted, will perform an over-the-wire receive as usual. See the rx
+     * metadata fragment flags and offset fields for details.
+     *
+     * \section stream_rx_threads Thread Safety
      *
      * Note on threading: recv() is *not* thread-safe, to avoid locking
      * overhead. The application calling recv() is responsible for making
@@ -211,23 +248,74 @@ public:
      *
      * \section stream_rx_error_handling Error Handling
      *
-     * \p metadata is a value that is set inside this function (effectively, a
-     * return value), and should be checked
-     * for potential error codes (see rx_metadata_t::error_code_t).
+     * \p metadata is a value that is set inside this function (effectively,
+     * a return value), and should be checked for potential error codes (see
+     * rx_metadata_t::error_code_t).
      *
      * The most common error code when something goes wrong is an overrun (also
      * referred to as overflow: error_code_t::ERROR_CODE_OVERFLOW). This error
      * code means that the device produced data faster than the application
      * could read, and various buffers filled up leaving no more space for the
      * device to write data to. Note that an overrun on the device will not
-     * immediatiely show up when calling recv(). Depending on the device
+     * immediately show up when calling recv(). Depending on the device
      * implementation, there may be many more valid samples available before the
      * device had to stop writing samples to the FIFO. Only when all valid
      * samples are returned to the call site will the error code be set to
      * "overrun". When this happens, all valid samples have been returned to
      * application where recv() was called.
      * If the device is streaming continuously, it will reset itself when the
-     * FIFO is cleared, and recv() can be called again to retrieve new, valid data.
+     * FIFO is cleared, and recv() can be called again to retrieve new, valid
+     * data.
+     *
+     * \section stream_rx_timeouts Timeouts
+     *
+     * The recv() call has a timeout parameter. This parameter is used to limit
+     * the time the call will block. If no data is available within the timeout
+     * period, the call will return with an error code of
+     * error_code_t::ERROR_CODE_TIMEOUT. This is not necessarily an error
+     * condition, but can occur naturally, for example if the upstream source
+     * produces data in a bursty fashion.
+     *
+     * An important fact about the timeout parameter is that it is not a total
+     * timeout value, but is applied to every single call within recv() that
+     * uses a timeout. This means that the total time recv() can block can be
+     * significantly larger than the timeout parameter passed to recv().
+     *
+     * When the timeout is set to zero, recv() will attempt to return as fast
+     * as possible, to minimize latency. This is useful when the application
+     * polls for data in a busy loop. However, note that in this case, it is
+     * possible that the call will return with an error code of timeout, even
+     * though a different error condition occurred, but has not been fully
+     * processed. It is therefore not sufficient to call recv() with a timeout
+     * of zero to check for any outstanding error conditions.
+     *
+     * \section stream_rx_nsamps_zero Calling recv() with nsamps_per_buff = 0
+     *
+     * It is not forbidden to call recv() with nsamps_per_buff = 0, and this
+     * can be useful to retrieve metadata only. In this case, the call will
+     * still apply the timeout value internally (which means the recv() call
+     * will wait at least for the timeout value for any incoming data, even
+     * though it won't be processed). However, the call will never return an
+     * error code of ERROR_CODE_TIMEOUT, as no data is expected to be processed.
+     *
+     * The following code snippet demonstrates how to call recv() with a zero
+     * number of samples to retrieve metadata only:
+     * \code{.cpp}
+     * // Note: timeout > 0, and num_samps_expected > 0. In this example, we
+     * // expect buffs to be filled.
+     * int num_samps_rcvd = rx_streamer->recv(
+     *     buffs, num_samps_expected, metadata, timeout);
+     * if (num_samps_rcvd < num_samps_expected &&
+     *     (metadata.error_code == error_code_t::ERROR_CODE_NONE ||
+     *      metadata.error_code == error_code_t::ERROR_CODE_TIMEOUT)) {
+     *     // If we reach this point, we assume that an error occurred, but we
+     *     // don't know what it was.
+     *     // Note the zero-value for nsamps_per_buff:
+     *     rx_streamer->recv(buffs, 0, metadata, timeout);
+     *     // Now metadata.error_code will contain the actual error code,
+     *     // if it was received within timeout.
+     * }
+     * \endcode
      *
      * \param buffs a vector of writable memory to fill with samples
      * \param nsamps_per_buff the size of each buffer in number of samples
@@ -254,6 +342,24 @@ public:
      * \param stream_cmd the stream command to issue
      */
     virtual void issue_stream_cmd(const stream_cmd_t& stream_cmd) = 0;
+
+    /*!
+     * Post an action to the input edge of the Streamer.
+     * \param action shared pointer to the corresponding action_info request
+     * \param port the port to which to post the action
+     */
+    virtual void post_input_action(
+        const std::shared_ptr<uhd::rfnoc::action_info>& action, const size_t port) = 0;
+
+    /*! Return information about the current streamer object
+     *
+     * The contents of the returned dictionary depend on the current hardware
+     * setup, the arguments with which this streamer was created, etc.
+     *
+     * \param chan The channel number for which to get stream info
+     * \returns dictionary of streamer information
+     */
+    virtual device_addr_t get_stream_info(const size_t chan = 0) const = 0;
 };
 
 /*!
@@ -318,6 +424,24 @@ public:
      */
     virtual bool recv_async_msg(
         async_metadata_t& async_metadata, double timeout = 0.1) = 0;
+
+    /*!
+     * Post an action to the output edge of the Streamer.
+     * \param action shared pointer to the corresponding action_info request
+     * \param port the port to which to post the action
+     */
+    virtual void post_output_action(
+        const std::shared_ptr<uhd::rfnoc::action_info>& action, const size_t port) = 0;
+
+    /*! Return information about the current streamer object
+     *
+     * The contents of the returned dictionary depend on the current hardware
+     * setup, the arguments with which this streamer was created, etc.
+     *
+     * \param chan The channel number for which to get stream info
+     * \returns dictionary of streamer information
+     */
+    virtual device_addr_t get_stream_info(const size_t chan = 0) const = 0;
 };
 
 } // namespace uhd

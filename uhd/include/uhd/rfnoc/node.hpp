@@ -34,18 +34,27 @@ namespace uhd { namespace rfnoc {
 class UHD_API node_t
 {
 public:
+    //! Action execution modes
+    enum class action_mode_t {
+        SYNC, //!< Synchronous: wait for all actions to be processed
+        ASYNC //!< Asynchronous: queue action and return immediately
+    };
+
     using resolver_fn_t          = std::function<void(void)>;
     using resolve_callback_t     = std::function<void(void)>;
     using graph_mutex_callback_t = std::function<std::recursive_mutex&(void)>;
     using action_handler_t =
         std::function<void(const res_source_info&, action_info::sptr)>;
+    using post_action_handler_t =
+        std::function<void(const res_source_info&, action_info::sptr, action_mode_t)>;
     using forwarding_map_t =
         std::unordered_map<res_source_info, std::vector<res_source_info>>;
 
     //! Types of property/action forwarding for those not defined by the block itself
     enum class forwarding_policy_t {
-        //! Forward the property/action to the opposite port with the same index
-        //(e.g., if it comes from input port 0, forward it to output port 0).
+        /*! Forward the property/action to the opposite port with the same index
+         * (e.g., if it comes from input port 0, forward it to output port 0).
+         */
         ONE_TO_ONE,
         //! Fan-out forwarding: Forward to all opposite ports
         ONE_TO_FAN,
@@ -73,13 +82,15 @@ public:
     /******************************************
      * Basic Operations
      ******************************************/
-    //! Return a unique identifier string for this node. In every RFNoC graph,
-    // no two nodes cannot have the same ID.
-    //
-    // \returns The unique ID as a string
+    /*! \brief Return a unique identifier string for this node.
+     *
+     * In every RFNoC graph, no two nodes cannot have the same ID.
+     *
+     * \returns The unique ID as a string
+     */
     virtual std::string get_unique_id() const;
 
-    /*! Return the number of input ports for this block.
+    /*! \brief Return the number of input ports for this block.
      *
      * This function needs to be overridden.
      *
@@ -87,7 +98,7 @@ public:
      */
     virtual size_t get_num_input_ports() const = 0;
 
-    /*! Return the number of output ports for this block.
+    /*! \brief Return the number of output ports for this block.
      *
      * This function needs to be overridden.
      *
@@ -426,13 +437,25 @@ protected:
      * If the action is posted to an edge which is not connected, the action
      * is lost.
      *
+     * The action handling can be either asynchronous or synchronous based on
+     * the mode parameter. When asynchronous, the action is placed in a FIFO
+     * queue and the function returns immediately. When synchronous (default),
+     * the function waits until all actions in the queue have been processed
+     * before returning. Note that only one thread can post actions
+     * synchronously, if another thread attempts to do so, that will result in
+     * a deadlock. Therefore, never post actions from an action handler
+     * synchronously.
+     *
      * \param edge_info The edge to which this action is posted. If
-     *                  edge_info.type == INPUT_EDGE, the that means the action
+     *                  edge_info.type == INPUT_EDGE, that means the action
      *                  will be posted to an upstream node, on port edge_info.instance.
      * \param action A reference to the action info object.
-     * \throws uhd::runtime_error if edge_info is not either INPUT_EDGE or OUTPUT_EDGE
+     * \param mode Action execution mode (SYNC for synchronous, ASYNC for asynchronous)
+     * \throws uhd::runtime_error if edge_info is neither INPUT_EDGE nor OUTPUT_EDGE
      */
-    void post_action(const res_source_info& edge_info, action_info::sptr action);
+    void post_action(const res_source_info& edge_info,
+        action_info::sptr action,
+        action_mode_t mode = action_mode_t::SYNC);
 
     /**************************************************************************
      * Graph Interaction
@@ -645,7 +668,7 @@ private:
     /*! Sets a callback that this node can call if it wants to post actions to
      * other nodes.
      */
-    void set_post_action_callback(action_handler_t&& post_handler)
+    void set_post_action_callback(post_action_handler_t&& post_handler)
     {
         _post_action_cb = std::move(post_handler);
     }
@@ -672,9 +695,10 @@ private:
         const std::string& id, const prop_data_t& val, const res_source_info& src_info);
 
     /****** Attributes *******************************************************/
-    //! Mutex to lock access to the property registry. Note: This is not the
-    // global property mutex, this only write-protects access to the property-
-    // related containers in this class.
+    /*! Mutex to lock access to the property registry. Note: This is not the
+     *  global property mutex, this only write-protects access to the property-
+     *  related containers in this class.
+     */
     mutable std::mutex _prop_mutex;
 
     //! Stores a reference to every registered property (Property Registry)
@@ -690,34 +714,39 @@ private:
     //! Stores the list of property resolvers
     std::vector<property_resolver_t> _prop_resolvers;
 
-    //! A callback that the graph sets when the node is connected to graph.
-    // This will return a global mutex to the graph. It is required to propagate
-    // properties on multithread applications.
+    /*! A callback that the graph sets when the node is connected to graph.
+     * This will return a global mutex to the graph. It is required to propagate
+     * properties on multithread applications.
+     */
     graph_mutex_callback_t _graph_mutex_cb;
 
-    //! A callback that can be called to notify the graph manager that something
-    // has changed, and that a property resolution needs to be performed.
+    /*! A callback that can be called to notify the graph manager that something
+     * has changed, and that a property resolution needs to be performed.
+     */
     resolve_callback_t _resolve_all_cb;
 
-    //! This is the default implementation of the property resolution
-    // method.
+    /*! This is the default implementation of the property resolution
+     * method.
+     */
     const resolve_callback_t _default_resolve_all_cb = [this]() {
         resolve_props();
         clean_props();
     };
 
 
-    //! This is permanent storage for all properties that don't get stored
-    // explicitly.
-    //
-    // Dynamic properties include properties defined in the block descriptor
-    // file, as well as new properties that get passed in during property
-    // propagation.
+    /*! \brief This is permanent storage for all properties that don't get stored
+     * explicitly.
+     *
+     * Dynamic properties include properties defined in the block descriptor
+     * file, as well as new properties that get passed in during property
+     * propagation.
+     */
     std::unordered_set<std::unique_ptr<property_base_t>> _dynamic_props;
 
-    //! Forwarding policy for specific properties
-    //
-    // The entry with the empty-string-key is the default policy.
+    /*! \brief Forwarding policy for specific properties.
+     *
+     * The entry with the empty-string-key is the default policy.
+     */
     std::unordered_map<std::string, forwarding_policy_t> _prop_fwd_policies{
         {"", forwarding_policy_t::ONE_TO_ONE}};
 
@@ -736,11 +765,12 @@ private:
     std::unordered_map<std::string, forwarding_policy_t> _action_fwd_policies{
         {"", forwarding_policy_t::ONE_TO_ONE}};
 
-    //! Callback which allows us to post actions to other nodes in the graph
-    //
-    // The default callback will simply drop actions
-    action_handler_t _post_action_cb = [](const res_source_info&,
-                                           action_info::sptr) { /* nop */ };
+    /*! \brief Callback which allows us to post actions to other nodes in the graph
+     *
+     * The default callback will simply drop actions
+     */
+    post_action_handler_t _post_action_cb =
+        [](const res_source_info&, action_info::sptr, action_mode_t) { /* nop */ };
 
     //! Map describing how incoming actions should be forwarded for USE_MAP
     forwarding_map_t _action_fwd_map;

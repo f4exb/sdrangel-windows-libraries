@@ -7,6 +7,7 @@
 #pragma once
 
 #include <uhd/config.hpp>
+#include <cstdint>
 #include <string>
 #include <tuple>
 
@@ -21,7 +22,7 @@ namespace uhd { namespace rfnoc {
  */
 struct UHD_API graph_edge_t
 {
-    enum edge_t {
+    enum edge_t : uint32_t {
         STATIC, ///< A static connection between two blocks in the FPGA
         DYNAMIC, ///< A user (dynamic) connection between two blocks in the FPGA
         RX_STREAM, ///< A connection from an FPGA block to a software RX streamer
@@ -48,12 +49,12 @@ struct UHD_API graph_edge_t
     size_t dst_port = 0;
     //! The type of edge
     edge_t edge = DYNAMIC;
-    //! When false, the framework will assume this is a back-edge. Back-edges
-    // are not used for sorting the graph as a DAG.
+    /*! When false, the framework will assume this is a back-edge. Back-edges
+     * are not used for sorting the graph as a DAG.
+     */
     bool is_forward_edge = true;
 
-    //! Equality operator: Compare two edges if they match, including edge
-    // properties.
+    //! Equality operator: Compare two edges if they match, including edge properties.
     bool operator==(const graph_edge_t& rhs) const
     {
         return is_equal(rhs, true);
