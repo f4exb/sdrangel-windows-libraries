@@ -9,11 +9,13 @@
 #include <uhd/rfnoc/rfnoc_types.hpp>
 #include <uhd/types/endianness.hpp>
 #include <uhd/utils/byteswap.hpp>
-#include <boost/format.hpp>
-#include <boost/optional.hpp>
+#include <cstdint>
 #include <deque>
+#include <functional>
 #include <list>
 #include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace uhd { namespace rfnoc { namespace chdr {
@@ -31,7 +33,7 @@ enum packet_type_t {
 // CHDR Header
 //----------------------------------------------------
 
-class chdr_header
+class UHD_API chdr_header
 {
 public: // Functions
     chdr_header()                       = default;
@@ -176,18 +178,7 @@ public: // Functions
     }
 
     //! Return a string representation of this object
-    inline const std::string to_string() const
-    {
-        // The static_casts are because vc and num_mdata are uint8_t -> unsigned char
-        // For some reason, despite the %u meaning unsigned int, boost still formats them
-        // as chars
-        return str(boost::format("chdr_header{vc:%u, eob:%c, eov:%c, pkt_type:%u, "
-                                 "num_mdata:%u, seq_num:%u, length:%u, dst_epid:%u}\n")
-                   % static_cast<uint16_t>(get_vc()) % (get_eob() ? 'Y' : 'N')
-                   % (get_eov() ? 'Y' : 'N') % get_pkt_type()
-                   % static_cast<uint16_t>(get_num_mdata()) % get_seq_num() % get_length()
-                   % get_dst_epid());
-    }
+    const std::string to_string() const;
 
 private:
     // The flattened representation of the header stored in host order
@@ -269,10 +260,10 @@ public: // Members
     uint16_t dst_port = 0;
     //! Source port for transaction (10 bits)
     uint16_t src_port = 0;
-    //! Sequence number (6 bits)
+    //! Sequence number (8 bits)
     uint8_t seq_num = 0;
     //! Has Time Flag (1 bit) and timestamp (64 bits)
-    boost::optional<uint64_t> timestamp = boost::none;
+    std::optional<uint64_t> timestamp{};
     //! Is Acknowledgment Flag (1 bit)
     bool is_ack = false;
     //! Source endpoint ID of transaction (16 bits)
@@ -281,6 +272,10 @@ public: // Members
     uint32_t address = 0;
     //! Data for transaction (vector of 32 bits)
     std::vector<uint32_t> data_vtr = {0};
+    //! Number of 32-bit data words present in the packet (4 bits)
+    size_t num_data = 1;
+    //! Number of 32-bit data words requested (4 bits)
+    size_t req_size = 0;
     //! Byte-enable mask for transaction (4 bits)
     uint8_t byte_enable = 0xF;
     //! Operation code (4 bits)
@@ -298,50 +293,80 @@ public: // Functions
     //! Populate the header for this type of packet
     void populate_header(chdr_header& header) const;
 
-    //! Serialize the payload to a uint64_t buffer
-    size_t serialize(uint64_t* buff,
+    //! Serialize the payload to a uint32_t buffer
+    size_t serialize(uint32_t* buff,
         size_t max_size_bytes,
-        const std::function<uint64_t(uint64_t)>& conv_byte_order) const;
+        const std::function<uint32_t(uint32_t)>& conv_byte_order) const;
 
-    //! Serialize the payload to a uint64_t buffer (no conversion function)
+    //! Serialize the payload to a uint32_t buffer (no conversion function)
     template <endianness_t endianness>
-    size_t serialize(uint64_t* buff, size_t max_size_bytes) const
+    size_t serialize(uint32_t* buff, size_t max_size_bytes) const
     {
-        auto conv_byte_order = [](uint64_t x) -> uint64_t {
-            return (endianness == uhd::ENDIANNESS_BIG) ? uhd::htonx<uint64_t>(x)
-                                                       : uhd::htowx<uint64_t>(x);
+        auto conv_byte_order = [](uint32_t x) -> uint32_t {
+            return (endianness == uhd::ENDIANNESS_BIG) ? uhd::htonx<uint32_t>(x)
+                                                       : uhd::htowx<uint32_t>(x);
         };
         return serialize(buff, max_size_bytes, conv_byte_order);
     }
 
-    //! Deserialize the payload from a uint64_t buffer
-    //! \param buff Buffer to deserialize the payload from
-    //! \param buff_size Number of elements in the buffer
-    //! \param conv_byte_order Byte order converter function (buffer to host endianness)
-    void deserialize(const uint64_t* buff,
+    /*! \brief Deserialize the payload from a uint32_t buffer.
+     *
+     * \param buff Buffer to deserialize the payload from
+     * \param buff_size Number of elements in the buffer
+     * \param conv_byte_order Byte order converter function (buffer to host endianness)
+     */
+    void deserialize(const uint32_t* buff,
         size_t buff_size,
-        const std::function<uint64_t(uint64_t)>& conv_byte_order);
+        const std::function<uint32_t(uint32_t)>& conv_byte_order);
 
-    //! Deserialize the payload from a uint64_t buffer (no conversion function)
-    //! \param buff Buffer to deserialize the payload from
-    //! \param buff_size Number of elements in the buffer
+    /*! \brief Deserialize the payload from a uint32_t buffer (no conversion function).
+     *
+     * \param buff Buffer to deserialize the payload from
+     * \param buff_size Number of elements in the buffer
+     */
     template <endianness_t endianness>
-    void deserialize(const uint64_t* buff, size_t buff_size)
+    void deserialize(const uint32_t* buff, size_t buff_size)
     {
-        auto conv_byte_order = [](uint64_t x) -> uint64_t {
-            return (endianness == uhd::ENDIANNESS_BIG) ? uhd::ntohx<uint64_t>(x)
-                                                       : uhd::wtohx<uint64_t>(x);
+        auto conv_byte_order = [](uint32_t x) -> uint32_t {
+            return (endianness == uhd::ENDIANNESS_BIG) ? uhd::ntohx<uint32_t>(x)
+                                                       : uhd::wtohx<uint32_t>(x);
         };
         deserialize(buff, buff_size, conv_byte_order);
     }
 
-    //! Get the serialized size of this payload in 64 bit words
+    //! Get the serialized size of this payload in bytes
     size_t get_length() const;
 
     // Return whether or not we have a valid timestamp
     bool has_timestamp() const
     {
         return bool(timestamp);
+    }
+
+    //! Returns true if this is a read request (OP_READ or OP_BLOCK_READ, not
+    //! an ACK). For such packets, req_size in the header encodes the
+    //! requested word count, and num_data is 0 since no data beats are
+    //! transmitted on the wire.
+    bool is_read_request() const
+    {
+        return !is_ack && (op_code == OP_READ || op_code == OP_BLOCK_READ);
+    }
+
+    //! Returns true if this is a write ACK (OP_WRITE, OP_BLOCK_WRITE, or
+    //! OP_SLEEP, with is_ack set). For such packets, no data beats are
+    //! transmitted on the wire.
+    bool is_write_response() const
+    {
+        return is_ack
+               && (op_code == OP_WRITE || op_code == OP_BLOCK_WRITE
+                   || op_code == OP_SLEEP);
+    }
+
+    //! Returns true if this is a read ACK (OP_READ or OP_BLOCK_READ, with
+    //! is_ack set). For such packets, data beats are transmitted on the wire.
+    bool is_read_response() const
+    {
+        return is_ack && (op_code == OP_READ || op_code == OP_BLOCK_READ);
     }
 
     //! Comparison operator (==)
@@ -360,7 +385,8 @@ private:
     static constexpr size_t DST_PORT_WIDTH    = 10;
     static constexpr size_t SRC_PORT_WIDTH    = 10;
     static constexpr size_t NUM_DATA_WIDTH    = 4;
-    static constexpr size_t SEQ_NUM_WIDTH     = 6;
+    static constexpr size_t REQ_SIZE_WIDTH    = 4;
+    static constexpr size_t SEQ_NUM_WIDTH     = 8;
     static constexpr size_t HAS_TIME_WIDTH    = 1;
     static constexpr size_t IS_ACK_WIDTH      = 1;
     static constexpr size_t SRC_EPID_WIDTH    = 16;
@@ -369,20 +395,26 @@ private:
     static constexpr size_t OPCODE_WIDTH      = 4;
     static constexpr size_t STATUS_WIDTH      = 2;
 
-    // Offsets assume 64-bit alignment
-    static constexpr size_t DST_PORT_OFFSET    = 0;
-    static constexpr size_t SRC_PORT_OFFSET    = 10;
-    static constexpr size_t NUM_DATA_OFFSET    = 20;
-    static constexpr size_t SEQ_NUM_OFFSET     = 24;
-    static constexpr size_t HAS_TIME_OFFSET    = 30;
-    static constexpr size_t IS_ACK_OFFSET      = 31;
-    static constexpr size_t SRC_EPID_OFFSET    = 32;
+    // Bit offsets within each 32-bit wire word
+    // Ctrl header word 0
+    static constexpr size_t DST_PORT_OFFSET = 0;
+    static constexpr size_t NUM_DATA_OFFSET = 10;
+    static constexpr size_t HAS_TIME_OFFSET = 14;
+    static constexpr size_t IS_ACK_OFFSET   = 15;
+    static constexpr size_t SRC_EPID_OFFSET = 16;
+    // Ctrl header word 1
+    static constexpr size_t SRC_PORT_OFFSET = 0;
+    static constexpr size_t SEQ_NUM_OFFSET  = 20;
+    static constexpr size_t REQ_SIZE_OFFSET = 28;
+    // Op-word
     static constexpr size_t ADDRESS_OFFSET     = 0;
     static constexpr size_t BYTE_ENABLE_OFFSET = 20;
     static constexpr size_t OPCODE_OFFSET      = 24;
     static constexpr size_t STATUS_OFFSET      = 30;
-    static constexpr size_t LO_DATA_OFFSET     = 0;
-    static constexpr size_t HI_DATA_OFFSET     = 32;
+
+public: // Constants (depend on private members, so must be declared here)
+    //! Maximum number of 32-bit data words in a CTRL payload
+    static constexpr size_t MAX_DATA_WORDS = (size_t(1) << NUM_DATA_WIDTH) - 1;
 };
 
 //----------------------------------------------------
@@ -415,7 +447,36 @@ public: // Members
     //! Buffer info (16 bits)
     uint16_t buff_info = 0;
     //! Extended status info (48 bits)
-    uint64_t status_info = 0;
+    union {
+        uint64_t info = 0;
+        struct
+        {
+            uint16_t last_control_seq_num  : 16;
+            uint16_t expected_seq_num      : 16;
+            uint16_t reserved_1            : 12;
+            bool stop_on_seq_error_enabled : 1;
+            bool seq_error_occoured        : 1;
+            bool reserved_2                : 1;
+            bool flow_control_due          : 1;
+        } status;
+        struct
+        {
+            uint16_t current_seq_num       : 16;
+            uint16_t expected_seq_num      : 16;
+            uint8_t chdr_packet_type       : 3;
+            uint16_t reserved_1            : 9;
+            bool stop_on_seq_error_enabled : 1;
+            bool seq_error_occoured        : 1;
+            bool reserved_2                : 1;
+            bool reserved_3                : 1;
+        } sequence_error;
+        struct
+        {
+            uint16_t dest_epid  : 16;
+            uint16_t this_epid  : 16;
+            uint32_t reserved_1 : 32;
+        } routing_error;
+    } status_info;
 
 public: // Functions
     strs_payload()                        = default;
@@ -443,17 +504,21 @@ public: // Functions
         return serialize(buff, max_size_bytes, conv_byte_order);
     }
 
-    //! Deserialize the payload from a uint64_t buffer
-    //! \param buff Buffer to deserialize the payload from
-    //! \param buff_size Number of elements in the buffer
-    //! \param conv_byte_order Byte order converter function (buffer to host endianness)
+    /*! \brief Deserialize the payload from a uint64_t buffer.
+     *
+     * \param buff Buffer to deserialize the payload from
+     * \param buff_size Number of elements in the buffer
+     * \param conv_byte_order Byte order converter function (buffer to host endianness)
+     */
     void deserialize(const uint64_t* buff,
         size_t buff_size,
         const std::function<uint64_t(uint64_t)>& conv_byte_order);
 
-    //! Deserialize the payload from a uint64_t buffer (no conversion function)
-    //! \param buff Buffer to deserialize the payload from
-    //! \param buff_size Number of elements in the buffer
+    /*! \brief Deserialize the payload from a uint64_t buffer (no conversion function).
+     *
+     * \param buff Buffer to deserialize the payload from
+     * \param buff_size Number of elements in the buffer
+     */
     template <endianness_t endianness>
     void deserialize(const uint64_t* buff, size_t buff_size)
     {
@@ -550,17 +615,21 @@ public: // Functions
         return serialize(buff, max_size_bytes, conv_byte_order);
     }
 
-    //! Deserialize the payload from a uint64_t buffer
-    //! \param buff Buffer to deserialize the payload from
-    //! \param buff_size Number of elements in the buffer
-    //! \param conv_byte_order Byte order converter function (buffer to host endianness)
+    /*! \brief Deserialize the payload from a uint64_t buffer.
+     *
+     * \param buff Buffer to deserialize the payload from
+     * \param buff_size Number of elements in the buffer
+     * \param conv_byte_order Byte order converter function (buffer to host endianness)
+     */
     void deserialize(const uint64_t* buff,
         size_t buff_size,
         const std::function<uint64_t(uint64_t)>& conv_byte_order);
 
-    //! Deserialize the payload from a uint64_t buffer (no conversion function)
-    //! \param buff Buffer to deserialize the payload from
-    //! \param buff_size Number of elements in the buffer
+    /*! \brief Deserialize the payload from a uint64_t buffer (no conversion function).
+     *
+     * \param buff Buffer to deserialize the payload from
+     * \param buff_size Number of elements in the buffer
+     */
     template <endianness_t endianness>
     void deserialize(const uint64_t* buff, size_t buff_size)
     {
@@ -603,16 +672,19 @@ private:
 // CHDR Management Packet Payload
 //----------------------------------------------------
 
-//! A class that represents a single management operation
-//  An operation consists of an operation code and some
-//  payload associated with that operation.
+/*! A class that represents a single management operation
+ *  An operation consists of an operation code and some
+ *  payload associated with that operation.
+ */
 class UHD_API mgmt_op_t
 {
 public:
-    // Operation code
-    // Note that a management packet has 8 bits available for op codes. The
-    // values for these enums are used to construct the packets, so these values
-    // must match the values in rfnoc_chdr_internal_utils.vh.
+    /*! \brief Operation code.
+     *
+     *  Note that a management packet has 8 bits available for op codes. The
+     *  values for these enums are used to construct the packets, so these values
+     *  must match the values in rfnoc_chdr_internal_utils.vh.
+     */
     enum op_code_t {
         //! Do nothing
         MGMT_OP_NOP = 0,
@@ -650,8 +722,9 @@ public:
         }
     };
 
-    //! An interpretation class for the payload for MGMT_OP_CFG_WR_REQ,
-    //! MGMT_OP_CFG_RD_REQ and MGMT_OP_CFG_RD_RESP
+    /*! An interpretation class for the payload for MGMT_OP_CFG_WR_REQ,
+     *  MGMT_OP_CFG_RD_REQ and MGMT_OP_CFG_RD_RESP
+     */
     struct cfg_payload
     {
         const uint16_t addr;
@@ -709,12 +782,17 @@ public:
         : _op_code(op_code), _op_payload(op_payload), _ops_pending(ops_pending)
     {
     }
-    mgmt_op_t(const mgmt_op_t& rhs) = default;
 
-    //! Get the ops pending for this transaction
-    //  Note that ops_pending is not used by UHD, since it can infer this value
-    //  from the ops vector in mgmt_hop_t. It is needed only by the CHDR
-    //  dissector.
+    mgmt_op_t(const mgmt_op_t& rhs)            = default;
+    mgmt_op_t& operator=(const mgmt_op_t& rhs) = default;
+
+
+    /*! \brief Get the ops pending for this transaction.
+     *
+     *  Note that ops_pending is not used by UHD, since it can infer this value
+     *  from the ops vector in mgmt_hop_t. It is needed only by the CHDR
+     *  dissector.
+     */
     inline uint8_t get_ops_pending() const
     {
         return _ops_pending;
@@ -747,17 +825,21 @@ private:
     uint8_t _ops_pending;
 };
 
-//! A class that represents a single management hop
-//  A hop is a collection for management transactions for
-//  a single node.
+/*! \brief A class that represents a single management hop.
+ *
+ *  A hop is a collection for management transactions for
+ *  a single node.
+ */
 class UHD_API mgmt_hop_t
 {
 public:
     mgmt_hop_t()                      = default;
     mgmt_hop_t(const mgmt_hop_t& rhs) = default;
 
-    //! Add a management operation to this hop.
-    //  Operations are added to the hop in FIFO order and executed in FIFO order.
+    /*! \brief Add a management operation to this hop.
+     *
+     *  Operations are added to the hop in FIFO order and executed in FIFO order.
+     */
     inline void add_op(const mgmt_op_t& op)
     {
         _ops.push_back(op);
@@ -775,16 +857,20 @@ public:
         return _ops.at(i);
     }
 
-    //! Serialize the payload to a uint64_t buffer
-    //  The RFNoC Specification section 2.2.6 specifies that for chdr widths
-    //  greater than 64, all MSBs are 0, so we pad out the hop based on the width
+    /*! \brief Serialize the payload to a uint64_t buffer.
+     *
+     *  The RFNoC Specification section 2.2.6 specifies that for chdr widths
+     *  greater than 64, all MSBs are 0, so we pad out the hop based on the width
+     */
     size_t serialize(std::vector<uint64_t>& target,
         const std::function<uint64_t(uint64_t)>& conv_byte_order,
         const size_t padding_size) const;
 
-    //! Deserialize the payload from a uint64_t buffer
-    //  The RFNoC Specification section 2.2.6 specifies that for chdr widths
-    //  greater than 64, all MSBs are 0, so we remove padding based on the width
+    /*! \brief Deserialize the payload from a uint64_t buffer.
+     *
+     *  The RFNoC Specification section 2.2.6 specifies that for chdr widths
+     *  greater than 64, all MSBs are 0, so we remove padding based on the width
+     */
     void deserialize(std::list<uint64_t>& src,
         const std::function<uint64_t(uint64_t)>& conv_byte_order,
         const size_t padding_size);
@@ -802,9 +888,11 @@ private:
     std::vector<mgmt_op_t> _ops;
 };
 
-//! A class that represents a complete multi-hop management transaction
-//  A transaction is a collection of hops, where each hop is a collection
-//  of management transactions.
+/*! \brief A class that represents a complete multi-hop management transaction.
+ *
+ *  A transaction is a collection of hops, where each hop is a collection
+ *  of management transactions.
+ */
 class UHD_API mgmt_payload
 {
 public:
@@ -821,8 +909,10 @@ public:
         set_proto_ver(protover);
     }
 
-    //! Add a management hop to this transaction
-    //  Hops are added to the hop in FIFO order and executed in FIFO order.
+    /*! \brief Add a management hop to this transaction.
+     *
+     *  Hops are added to the hop in FIFO order and executed in FIFO order.
+     */
     inline void add_hop(const mgmt_hop_t& hop)
     {
         _hops.push_back(hop);
@@ -876,17 +966,21 @@ public:
         return serialize(buff, max_size_bytes, conv_byte_order);
     }
 
-    //! Deserialize the payload from a uint64_t buffer
-    //! \param buff Buffer to deserialize the payload from
-    //! \param buff_size Number of elements in the buffer
-    //! \param conv_byte_order Byte order converter function (buffer to host endianness)
+    /*! \brief Deserialize the payload from a uint64_t buffer.
+     *
+     * \param buff Buffer to deserialize the payload from
+     * \param buff_size Number of elements in the buffer
+     * \param conv_byte_order Byte order converter function (buffer to host endianness)
+     */
     void deserialize(const uint64_t* buff,
         size_t buff_size,
         const std::function<uint64_t(uint64_t)>& conv_byte_order);
 
-    //! Deserialize the payload from a uint64_t buffer (no conversion function)
-    //! \param buff Buffer to deserialize the payload from
-    //! \param buff_size Number of elements in the buffer
+    /*! \brief Deserialize the payload from a uint64_t buffer (no conversion function).
+     *
+     * \param buff Buffer to deserialize the payload from
+     * \param buff_size Number of elements in the buffer
+     */
     template <endianness_t endianness>
     void deserialize(const uint64_t* buff, size_t buff_size)
     {

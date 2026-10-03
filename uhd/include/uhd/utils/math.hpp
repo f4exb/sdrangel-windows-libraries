@@ -8,18 +8,7 @@
 #pragma once
 
 #include <uhd/config.hpp>
-#include <uhd/exception.hpp>
-#include <stdint.h>
-#include <boost/numeric/conversion/bounds.hpp>
 #include <cmath>
-#if BOOST_VERSION >= 106700
-#    include <boost/integer/common_factor.hpp>
-// "bmint" for "boost math integer"
-namespace _bmint = boost::integer;
-#else
-#    include <boost/math/common_factor.hpp>
-namespace _bmint = boost::math;
-#endif
 
 
 namespace uhd {
@@ -51,14 +40,15 @@ static const double PI = 3.14159265358979323846;
 static const float SINGLE_PRECISION_EPSILON  = 1.19e-7f;
 static const double DOUBLE_PRECISION_EPSILON = 2.22e-16;
 
-//! Epsilon value for when using fp_compare_epsilon to compare frequencies
-//
-// Note that this is a UHD/USRP-specific constant. In UHD, frequencies are on
-// the order of 1e9 (GHz) or below. We will declare frequencies as equal if they
-// are within a millihertz.  For the purpose of
-// comparing frequencies, we "lose" 9 decimal places for the integer
-// component of the frequency, so we choose this epsilon value for floating
-// point comparison of frequencies.
+/*! \brief Epsilon value for when using fp_compare_epsilon to compare frequencies.
+ *
+ * Note that this is a UHD/USRP-specific constant. In UHD, frequencies are on
+ * the order of 1e9 (GHz) or below. We will declare frequencies as equal if they
+ * are within a millihertz.  For the purpose of
+ * comparing frequencies, we "lose" 9 decimal places for the integer
+ * component of the frequency, so we choose this epsilon value for floating
+ * point comparison of frequencies.
+ */
 static constexpr double FREQ_COMPARE_EPSILON = 1e-12;
 
 namespace fp_compare {
@@ -273,29 +263,14 @@ inline double lin_to_dB(const double val)
 }
 
 
-//! Portable version of lcm() across Boost versions
-template <typename IntegerType>
-inline IntegerType lcm(IntegerType x, IntegerType y)
-{
-    // Note: _bmint is defined conditionally at the top of the file
-    return _bmint::lcm<IntegerType>(x, y);
-}
-
-//! Portable version of gcd() across Boost versions
-template <typename IntegerType>
-inline IntegerType gcd(IntegerType x, IntegerType y)
-{
-    // Note: _bmint is defined conditionally at the top of the file
-    return _bmint::gcd<IntegerType>(x, y);
-}
-
-//! Returns the sign of x
-//
-// Note: This is equivalent to the Boost.Math version, but without the
-// dependency.
-//
-// Returns +1 for positive arguments, -1 for negative arguments, and 0 if x is
-// zero.
+/*! \brief Returns the sign of x.
+ *
+ * Note: This is equivalent to the Boost.Math version, but without the
+ * dependency.
+ *
+ * Returns +1 for positive arguments, -1 for negative arguments, and 0 if x is
+ * zero.
+ */
 template <typename T>
 inline constexpr int sign(T x)
 {
@@ -304,16 +279,17 @@ inline constexpr int sign(T x)
     return (T(0) < x) - (x < T(0));
 }
 
-//! Return a wrapped frequency that is the equivalent frequency in the first
-// Nyquist zone.
-//
-// Examples:
-// - Just above the sampling rate:
-//   wrap_frequency(250e6, 200e6) == 50e6
-// - Just outside the Nyquist zone:
-//   wrap_frequency(120e6, 200e6) == -80e6
-// - Also works for negative frequencies:
-//   wrap_frequency(-250e6, 200e6) == -50e6
+/*! \brief Return a wrapped frequency that is the equivalent frequency in the first
+ * Nyquist zone.
+ *
+ * Examples:
+ * - Just above the sampling rate:
+ *   wrap_frequency(250e6, 200e6) == 50e6
+ * - Just outside the Nyquist zone:
+ *   wrap_frequency(120e6, 200e6) == -80e6
+ * - Also works for negative frequencies:
+ *   wrap_frequency(-250e6, 200e6) == -50e6
+ */
 inline double wrap_frequency(const double requested_freq, const double rate)
 {
     double freq = std::fmod(requested_freq, rate);

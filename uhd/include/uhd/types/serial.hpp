@@ -8,7 +8,8 @@
 #pragma once
 
 #include <uhd/config.hpp>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -85,7 +86,7 @@ struct UHD_API spi_config_t
      * The edge type specifies when data is valid
      * relative to the edge of the serial clock.
      */
-    enum edge_t { EDGE_RISE = 'r', EDGE_FALL = 'f' };
+    enum edge_t : uint32_t { EDGE_RISE = 'r', EDGE_FALL = 'f' };
 
     //! on what edge is the mosi data valid?
     edge_t mosi_edge;
