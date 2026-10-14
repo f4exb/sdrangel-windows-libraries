@@ -67,7 +67,9 @@ extern "C" {
   #define NEAACDECAPI
 #endif
 
-#define FAAD2_VERSION "unknown"
+#ifndef FAAD2_VERSION
+  #define FAAD2_VERSION "unknown"
+#endif
 
 /* object types for AAC */
 #define MAIN       1
@@ -156,6 +158,7 @@ typedef struct mp4AudioSpecificConfig
     char sbr_present_flag;
     char forceUpSampling;
     char downSampledSBR;
+    char ps_present_flag;
 } mp4AudioSpecificConfig;
 
 typedef struct NeAACDecConfiguration
